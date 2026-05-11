@@ -1,0 +1,18 @@
+{$CADDY_SITE_ADDRESS} {
+    root * /srv/frontend/dist
+    encode gzip zstd
+
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /app* {
+        try_files {path} /index.html
+        file_server
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
