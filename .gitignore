@@ -37,4 +37,4 @@ redis_data/
 .coverage
 htmlcov/
 
-photo_2026-04-26_16-37-04.jpg
+photo_*.jpg
