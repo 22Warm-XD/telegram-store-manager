@@ -1,72 +1,428 @@
 # Telegram Store Manager
 
-Production-ready Telegram bot and Mini App for managing a fashion store catalog, product availability, channel posts, discounts, orders, and inventory.
+**Telegram Store Manager** - это production-ready проект для Telegram-магазина одежды, обуви и аксессуаров. Внутри есть Telegram-бот для покупателей, админ-панель для управления товарами, публикация в Telegram-канал, импорт постов из канала, скидки, статусы продаж и отдельный Telegram Mini App с каталогом, корзиной и оформлением заказа.
 
-The project combines an aiogram bot, PostgreSQL storage, Redis FSM, a FastAPI backend, and a React/Vite Telegram Mini App. It is designed for stores that sell clothing, shoes, and accessories through Telegram.
+Проект сделан так, чтобы его можно было использовать как основу для реального магазина: подключить своего бота, канал, ссылки на поддержку и отзывы, загрузить свои товары, настроить Mini App и запустить всё через Docker.
 
-## Features
+> В публичном репозитории нет реальных токенов, паролей, ID админов, IP сервера, доменов и приватных ссылок. Все рабочие значения должны храниться только в локальном `.env`.
 
-- Product catalog with categories, photos, prices, sizes, descriptions, and availability status.
-- Telegram admin panel with FSM workflows for adding products, collecting 1-5 photos, editing drafts, and publishing items.
-- Channel publishing for product posts, media groups, discount updates, and SOLD status.
-- Import from Telegram channel posts into the bot catalog.
-- Discount management with old price and current price display.
-- SOLD workflow that removes products from the public catalog and keeps admin history.
-- Telegram Mini App storefront with search, categories, sorting, favorites, cart, and checkout.
-- Order creation through the Mini App with admin notifications in Telegram.
-- PostgreSQL migrations with Alembic and structured logging for production use.
+## Что Внутри
 
-## Tech Stack
+- Telegram-бот на `aiogram 3.x` с HTML-разметкой сообщений.
+- Админ-панель прямо в Telegram.
+- Каталог товаров по категориям.
+- Добавление товаров с 1-5 фотографиями.
+- Публикация товаров в Telegram-канал.
+- Возможность добавить товар только в бот, без публикации в канал.
+- Импорт уже готовых постов из Telegram-канала в каталог бота.
+- Скидки со старой зачёркнутой ценой и новой актуальной ценой.
+- Кнопка удаления скидки.
+- Перевод товара в статус `SOLD`.
+- Раздел проданных товаров с архивированием.
+- Telegram Mini App с витриной товаров, поиском, фильтрами, избранным, корзиной и заказами.
+- FastAPI backend для Mini App.
+- PostgreSQL для хранения товаров, пользователей, фото, заказов и логов.
+- Redis для FSM-сценариев.
+- Alembic-миграции.
+- Docker Compose для запуска всего стека.
+- Caddy для раздачи Mini App и проксирования API.
 
-- Python 3.13+
-- aiogram 3.x
-- FastAPI
-- PostgreSQL
-- Redis
-- SQLAlchemy 2.x
-- Alembic
-- React
-- Vite
-- TypeScript
-- Zustand
-- Caddy
-- Docker Compose
+## Как Работает Бот
 
-## Project Structure
+Бот нужен для управления товарами магазина. С его помощью можно добавлять товары, публиковать их в каталог, отправлять посты в Telegram-канал, делать скидки, отмечать позиции как проданные и импортировать уже готовые посты из канала.
+
+Админка открывается командой:
 
 ```text
-app/
-  handlers/          Telegram bot handlers
-  keyboards/         Reply and inline keyboards
-  database/          SQLAlchemy models, sessions, repositories
-  services/          Product, channel, order, and formatting services
-  states/            FSM states
-  utils/             Logging and premium emoji helpers
-  web/               FastAPI Mini App API
-
-frontend/
-  src/
-    api/             API client
-    components/      Storefront UI components
-    pages/           Mini App pages
-    store/           Cart and favorites state
-    types/           TypeScript types
-    utils/           Telegram WebApp helpers
-
-alembic/             Database migrations
-scripts/             Deployment and bootstrap helpers
-tests/               Unit and service tests
+/admin
 ```
 
-## Environment Variables
+Доступ к админ-панели есть только у пользователей, чьи Telegram ID указаны в переменной `ADMIN_IDS`.
 
-Copy the example file and fill it with your own values:
+## Главное Меню
+
+Покупателю доступны основные разделы:
+
+- `Каталог` - открывает товары по категориям.
+- `Отзывы` - ведёт на канал или чат с отзывами.
+- `Поддержка` - ведёт на менеджера.
+- `Открыть магазин` - открывает Telegram Mini App, если он настроен.
+- `Админ-панель` - видна только администраторам.
+
+В каталоге есть 3 категории:
+
+- `Обувь`
+- `Одежда`
+- `Аксессуары`
+
+Если в категории пока нет активных товаров, бот отправляет отдельное сообщение, что товаров нет.
+
+## Админ-Панель
+
+В админке есть кнопки:
+
+- `Добавить новый товар`
+- `Импорт из канала`
+- `Активные объявления`
+- `Проданные товары`
+- `Назад`
+
+Админские сценарии построены через FSM: бот по шагам спрашивает данные и не заставляет вводить всё одной большой простынёй.
+
+## Добавление Товара
+
+После нажатия на `Добавить новый товар` бот поэтапно запрашивает:
+
+1. Фото товара - от 1 до 5 фотографий.
+2. Название товара.
+3. Размер.
+4. Цену.
+5. Состояние.
+6. Описание.
+7. Категорию товара.
+
+Если описание не нужно, можно отправить:
+
+```text
+0
+```
+
+Категория выбирается только кнопками:
+
+- `Обувь`
+- `Одежда`
+- `Аксессуары`
+
+После заполнения всех данных бот показывает предпросмотр товара и кнопки:
+
+- `Опубликовать в канал и бот`
+- `Добавить только в бот`
+- `Изменить`
+- `Отмена`
+
+Если выбрать `Опубликовать в канал и бот`, товар появится в каталоге бота и будет опубликован отдельным постом в Telegram-канале.
+
+Если выбрать `Добавить только в бот`, товар появится только в каталоге бота. В канал он не отправляется, а `channel_message_id` остаётся пустым.
+
+## Фото И Публикация В Канал
+
+Для одного товара можно добавить максимум 5 фото.
+
+Правила публикации:
+
+- 1 фото - бот отправляет обычный `sendPhoto` с caption.
+- 2-5 фото - бот отправляет `sendMediaGroup`.
+- Caption ставится только на первое фото альбома.
+- В базе сохраняются `file_id` всех фото.
+- Для постов из канала сохраняется ID первого сообщения, чтобы можно было обновлять caption.
+
+Важно: товары, добавленные только в бот, не пытаются редактировать Telegram-канал при скидке или продаже.
+
+## Импорт Из Канала
+
+Если товар уже был опубликован вручную в Telegram-канале, его можно перенести в каталог бота через `Импорт из канала`.
+
+Сценарий:
+
+1. Админ нажимает `Импорт из канала`.
+2. Бот просит переслать пост из канала.
+3. Админ пересылает сообщение с товаром.
+4. Если это альбом, админ пересылает все сообщения альбома и нажимает `Готово`.
+5. Бот пытается автоматически распознать название, размер, состояние, цену, статус и категорию.
+6. Если часть данных не удалось определить, бот спрашивает их вручную.
+
+После завершения импорта товар появляется в каталоге бота.
+
+Оформление поста сохраняется максимально близко к оригиналу: текст, HTML-разметка, ссылки, hashtags, premium emoji и фото переносятся настолько полно, насколько это позволяет Telegram Bot API.
+
+## Активные Объявления
+
+В разделе `Активные объявления` отображаются товары со статусом `ACTIVE`.
+
+При открытии конкретного товара админ видит карточку и действия:
+
+- `Сделать скидку`
+- `Удалить скидку`, если скидка уже есть
+- `Товар продан`
+- `Назад`
+
+Кнопка `Назад` возвращает в список активных объявлений, а из списка активных объявлений - обратно в админ-панель.
+
+## Скидки
+
+Если нажать `Сделать скидку`, бот попросит ввести новую цену.
+
+Правила:
+
+- новая цена должна быть числом;
+- новая цена должна быть меньше текущей;
+- старая цена сохраняется в `old_price`;
+- текущая цена обновляется в `price`;
+- в карточке показывается старая зачёркнутая цена и новая цена.
+
+Пример отображения:
+
+```html
+Цена: <s>20000 ₽</s> 15000 ₽
+```
+
+Если товар был опубликован в канал через бота, пост в канале обновляется. Если товар добавлен только в бот, обновляется только карточка внутри бота и Mini App.
+
+## Удаление Скидки
+
+Если у товара есть скидка, в админке появляется кнопка `Удалить скидку`.
+
+Она делает следующее:
+
+- возвращает старую цену как актуальную;
+- очищает `old_price`;
+- убирает зачёркивание;
+- обновляет пост в канале, если товар связан с опубликованным постом.
+
+## Статус SOLD
+
+Кнопка `Товар продан` переводит товар в статус `SOLD`.
+
+После этого:
+
+- товар исчезает из пользовательского каталога;
+- товар появляется в разделе `Проданные товары`;
+- Mini App показывает товар как проданный или скрывает его в зависимости от настроек выдачи API;
+- если товар был опубликован ботом в канал, пост в канале обновляется на SOLD;
+- если товар был добавлен только в бот, канал не трогается;
+- если импортированный пост нельзя отредактировать из-за ограничений Telegram, статус всё равно меняется внутри базы и бота.
+
+## Проданные Товары
+
+В разделе `Проданные товары` можно просматривать позиции со статусом `SOLD`.
+
+Там есть кнопка `Удалить из списка`.
+
+Важно: эта кнопка не удаляет товар полностью из базы. Она проставляет `archived_at`, чтобы скрыть товар из списка проданных и сохранить историю.
+
+## Premium Emoji
+
+В проекте есть отдельный модуль:
+
+```text
+app/utils/premium_emoji.py
+```
+
+Premium emoji используются:
+
+- в сообщениях бота;
+- в постах Telegram-канала;
+- в админке;
+- в inline-кнопках там, где это поддерживается Telegram Bot API.
+
+Для текста используется Telegram HTML:
+
+```html
+<tg-emoji emoji-id="5206607081334906820"></tg-emoji>
+```
+
+Для кнопок используется `icon_custom_emoji_id`, а не HTML внутри текста кнопки.
+
+## Telegram Mini App
+
+Mini App - это мобильная витрина магазина внутри Telegram.
+
+Внутри есть:
+
+- тёмный адаптивный интерфейс;
+- шапка магазина;
+- аватарка/логотип магазина;
+- поиск по товарам;
+- категории;
+- сортировка;
+- карточки товаров;
+- избранное;
+- корзина;
+- оформление заказа;
+- уведомление админам в Telegram после создания заказа.
+
+Mini App берёт товары из той же PostgreSQL-базы, что и бот. Если товар добавили в боте, он появляется в Mini App. Если товар продали или изменили цену, Mini App показывает актуальное состояние.
+
+## Что Можно Настроить В Mini App
+
+Можно менять:
+
+- название магазина;
+- описание в шапке;
+- аватарку/логотип;
+- цвета интерфейса;
+- тексты кнопок;
+- ссылки на отзывы, поддержку и соцсети;
+- поведение каталога;
+- отображение проданных товаров;
+- поля формы заказа;
+- домен Mini App.
+
+Аватарку Mini App можно заменить во frontend-части. Обычно её удобно положить в:
+
+```text
+frontend/public/
+```
+
+Например:
+
+```text
+frontend/public/store-avatar.jpg
+```
+
+После этого её можно подключить в компоненте шапки Mini App, например в:
+
+```text
+frontend/src/components/HeaderBanner.tsx
+```
+
+Если нужен полностью публичный репозиторий, личные логотипы, скриншоты и рабочие изображения лучше не коммитить. Для приватного проекта можно хранить их в `frontend/public/`.
+
+## Оформление Заказа
+
+Покупатель добавляет товары в корзину и нажимает кнопку оформления заказа.
+
+Форма заказа может включать:
+
+- имя;
+- Telegram username;
+- телефон для связи, если он нужен магазину;
+- комментарий;
+- предпочтительный способ связи.
+
+После отправки backend создаёт заказ в базе и отправляет уведомление администраторам в Telegram.
+
+Сообщение админу содержит:
+
+- данные Telegram-пользователя, если Mini App открыт внутри Telegram;
+- имя покупателя;
+- username для связи;
+- телефон, если он указан;
+- комментарий;
+- список товаров;
+- количество;
+- итоговую сумму.
+
+## Backend API Для Mini App
+
+FastAPI backend находится в:
+
+```text
+app/web/
+```
+
+Основные endpoints:
+
+- `GET /api/health` - проверка, что backend жив.
+- `GET /api/products` - список товаров.
+- `GET /api/products/{id}` - один товар.
+- `GET /api/categories` - список категорий.
+- `GET /api/meta` - публичные данные витрины.
+- `POST /api/webapp/validate` - проверка Telegram WebApp `initData`.
+- `POST /api/orders` - создание заказа.
+- `GET /api/media/{photo_id}` - безопасная отдача фото товара без раскрытия bot token на frontend.
+
+## Домен И Caddy
+
+Для локальной проверки можно открыть Mini App через IP и порт:
+
+```text
+http://<ip>:8080/app
+```
+
+Но для настоящего Telegram Mini App нужен HTTPS-домен. Telegram не откроет полноценный Mini App через обычный HTTP в продакшене.
+
+Пример схемы:
+
+```text
+Пользователь Telegram
+        |
+        v
+https://your-domain.com/app
+        |
+        v
+Caddy
+        |
+        +-- frontend dist
+        |
+        +-- /api/* -> backend:8000
+```
+
+В проекте есть `Caddyfile`, который:
+
+- раздаёт собранный frontend;
+- проксирует `/api/*` на backend;
+- отдаёт SPA-страницы через `try_files`;
+- может автоматически получить HTTPS-сертификат, если указан домен и сервер доступен снаружи.
+
+Пример безопасной настройки в `.env`:
+
+```env
+MINI_APP_URL=https://your-domain.com/app
+CADDY_SITE_ADDRESS=your-domain.com
+```
+
+Для временного теста:
+
+```env
+MINI_APP_URL=http://<ip>:8080/app
+CADDY_SITE_ADDRESS=:8080
+```
+
+## DNS Для Домена
+
+Если домен подключается через Cloudflare или другой DNS-провайдер, обычно нужна A-запись:
+
+```text
+Type: A
+Name: store
+Content: <ip>
+TTL: Auto
+```
+
+После этого адрес будет выглядеть примерно так:
+
+```text
+https://store.example.com/app
+```
+
+Если используется Cloudflare:
+
+- для быстрого теста можно выключить proxy и оставить `DNS only`;
+- для HTTPS через Cloudflare можно использовать режим SSL/TLS `Full`;
+- если Caddy сам получает сертификат, сервер должен принимать входящие соединения на `80` и `443`;
+- при ошибке SSL handshake нужно проверить режим SSL/TLS и наличие сертификата на origin-сервере.
+
+## BotFather И Mini App
+
+Чтобы кнопка Mini App открывалась в Telegram:
+
+1. Откройте `@BotFather`.
+2. Выберите своего бота.
+3. Настройте Mini App / Web App.
+4. Укажите URL:
+
+```text
+https://your-domain.com/app
+```
+
+5. В `.env` проекта укажите тот же адрес:
+
+```env
+MINI_APP_URL=https://your-domain.com/app
+```
+
+После перезапуска бота кнопка `Открыть магазин` будет открывать Mini App.
+
+## Переменные Окружения
+
+Скопируйте пример:
 
 ```bash
 cp .env.example .env
 ```
 
-Example:
+Заполните `.env` своими значениями:
 
 ```env
 BOT_TOKEN=your_bot_token_here
@@ -95,37 +451,58 @@ REDIS_DB=0
 LOG_LEVEL=INFO
 ```
 
-Use `MINI_APP_URL=http://<ip>:8080/app` for temporary server testing through an IP address. For a real Telegram Mini App, use an HTTPS domain and configure it in BotFather.
+Пояснения:
 
-## Installation
+- `BOT_TOKEN` - токен бота из BotFather.
+- `ADMIN_IDS` - Telegram ID админов через запятую.
+- `CHANNEL_ID` - ID Telegram-канала, куда бот публикует товары.
+- `SUPPORT_USERNAME` - username менеджера без `@`.
+- `SUPPORT_URL` - ссылка на поддержку.
+- `REVIEWS_URL` - ссылка на отзывы.
+- `TIKTOK_URL` - ссылка на соцсеть.
+- `LOGISTICS_URL` - ссылка на логистику или информационный пост.
+- `MINI_APP_URL` - URL Mini App для кнопки в боте.
+- `CADDY_SITE_ADDRESS` - адрес, который слушает Caddy.
 
-Create a virtual environment and install the Python package:
+## Установка Без Docker
+
+Создайте виртуальное окружение:
 
 ```bash
 python -m venv .venv
+```
+
+Активируйте его на Windows:
+
+```bash
 .venv\Scripts\activate
+```
+
+Установите зависимости:
+
+```bash
 python -m pip install -e .[dev]
 ```
 
-Apply database migrations:
+Примените миграции:
 
 ```bash
 alembic upgrade head
 ```
 
-Run the Telegram bot:
+Запустите бота:
 
 ```bash
 python -m app.main
 ```
 
-Run the Mini App backend:
+Запустите backend Mini App:
 
 ```bash
 python -m uvicorn app.web.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Run the frontend in development mode:
+Запустите frontend в dev-режиме:
 
 ```bash
 cd frontend
@@ -133,69 +510,181 @@ npm install
 npm run dev
 ```
 
-## Run With Docker
+## Запуск Через Docker
 
-Start the full stack:
+Запуск всего стека:
 
 ```bash
 docker compose up --build -d
 ```
 
-Services:
-
-- `postgres` - product and order database
-- `redis` - FSM storage
-- `migrate` - Alembic migrations
-- `bot` - Telegram bot long polling
-- `backend` - FastAPI Mini App API
-- `web` - Caddy static frontend and `/api` reverse proxy
-
-Useful commands:
+Проверить контейнеры:
 
 ```bash
 docker compose ps
+```
+
+Логи бота:
+
+```bash
 docker compose logs -f bot
+```
+
+Логи backend:
+
+```bash
 docker compose logs -f backend
+```
+
+Логи Caddy/frontend:
+
+```bash
 docker compose logs -f web
 ```
 
-Local URLs:
+Локальные адреса:
 
-- Mini App frontend: `http://127.0.0.1:8080/app`
-- API health check: `http://127.0.0.1:8080/api/health`
+- Mini App: `http://127.0.0.1:8080/app`
+- API health: `http://127.0.0.1:8080/api/health`
 
-Server test URLs:
+Адреса для сервера:
 
-- Mini App frontend: `http://<ip>:8080/app`
-- API health check: `http://<ip>:8080/api/health`
+- Mini App: `http://<ip>:8080/app`
+- API health: `http://<ip>:8080/api/health`
 
-## Mini App API
+Для продакшена используйте HTTPS-домен.
 
-- `GET /api/products` - list active products from the same database used by the bot.
-- `GET /api/products/{id}` - get one product.
-- `GET /api/categories` - list product categories.
-- `GET /api/meta` - public storefront metadata and links.
-- `POST /api/webapp/validate` - validate Telegram WebApp `initData`.
-- `POST /api/orders` - create an order and notify admins.
-- `GET /api/media/{photo_id}` - proxy Telegram product photos without exposing the bot token to the frontend.
+## Миграции Базы Данных
 
-## Security Notes
+Миграции лежат в:
 
-- Never commit `.env`.
-- Never publish real bot tokens, admin IDs, channel IDs, passwords, server IPs, private domains, or private Telegram links.
-- Keep production credentials only on the deployment server.
-- Use `.env.example` only for safe placeholder values.
-- Review files with a secret scan before publishing changes.
+```text
+alembic/
+```
 
-## Tests
+Применить миграции:
+
+```bash
+alembic upgrade head
+```
+
+Создать новую миграцию:
+
+```bash
+alembic revision --autogenerate -m "describe change"
+```
+
+## Структура Проекта
+
+```text
+app/
+  bot.py                  Создание Bot/Dispatcher
+  config.py               Настройки из .env
+  main.py                 Точка входа Telegram-бота
+
+  handlers/
+    user/                 Пользовательские сценарии
+    admin/                Админ-панель, товары, скидки, импорт
+
+  keyboards/              Inline и reply-кнопки
+
+  database/
+    models.py             SQLAlchemy-модели
+    session.py            Подключение к БД
+    repositories/         Репозитории пользователей, товаров, заказов
+
+  services/
+    product_service.py    Бизнес-логика товаров
+    channel_service.py    Публикация и редактирование канала
+    formatter.py          Все тексты сообщений и постов
+    order_service.py      Заказы Mini App
+
+  states/                 FSM-состояния
+  utils/                  Логи, premium emoji, helpers
+  web/                    FastAPI backend для Mini App
+
+frontend/
+  src/
+    api/                  Клиент API
+    components/           UI-компоненты Mini App
+    pages/                Страницы витрины
+    store/                Корзина и избранное
+    types/                TypeScript-типы
+    utils/                Telegram WebApp helpers
+
+alembic/                  Миграции PostgreSQL
+scripts/                  Скрипты деплоя и bootstrap
+tests/                    Тесты
+```
+
+## Tech Stack
+
+- Python 3.13+
+- aiogram 3.x
+- FastAPI
+- PostgreSQL
+- Redis
+- SQLAlchemy 2.x
+- Alembic
+- React
+- Vite
+- TypeScript
+- Zustand
+- Caddy
+- Docker Compose
+- pytest
+
+## Тесты
+
+Запуск backend-тестов:
 
 ```bash
 python -m pytest
 ```
 
-Frontend build:
+Сборка frontend:
 
 ```bash
 cd frontend
 npm run build
 ```
+
+## Безопасность
+
+Никогда не коммитьте:
+
+- `.env`
+- реальные токены бота;
+- пароли от базы;
+- ID админов;
+- приватные ссылки;
+- IP сервера;
+- домены рабочих проектов;
+- локальные базы `.db`, `.sqlite`;
+- логи;
+- кэши;
+- личные скриншоты и логотипы, если репозиторий публичный.
+
+Для публичного GitHub используйте только `.env.example` с безопасными placeholders.
+
+Перед публикацией полезно сделать secret scan:
+
+```bash
+rg "BOT_TOKEN|password|secret|token|your-real-domain|your-real-ip" .
+```
+
+## Что Менять Под Свой Магазин
+
+Обычно нужно заменить:
+
+- значения в `.env`;
+- тексты приветствия в `app/services/formatter.py`;
+- ссылки на поддержку и отзывы;
+- название магазина в Mini App metadata;
+- аватарку/логотип Mini App;
+- цвета и стили в `frontend/src/styles.css`;
+- тексты в компонентах `frontend/src/components/`;
+- домен в `MINI_APP_URL`;
+- адрес Caddy в `CADDY_SITE_ADDRESS`.
+
+Так проект можно адаптировать под любой Telegram-магазин без переписывания основной бизнес-логики.
