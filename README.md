@@ -1,10 +1,55 @@
 # Telegram Store Manager
 
+<div align="center">
+
+## Telegram Bot + Mini App For Fashion Stores
+
+**Каталог, админ-панель, Telegram-канал, скидки, импорт постов, корзина и заказы - в одном проекте.**
+
+[![Python](https://img.shields.io/badge/Python-3.13%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![aiogram](https://img.shields.io/badge/aiogram-3.x-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://aiogram.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-111111?style=for-the-badge)](LICENSE)
+
+[Документация](#как-работает-бот) ·
+[Mini App](#telegram-mini-app) ·
+[Запуск](#запуск-через-docker) ·
+[Контакт](https://t.me/natureles)
+
+</div>
+
 **Telegram Store Manager** - это production-ready проект для Telegram-магазина одежды, обуви и аксессуаров. Внутри есть Telegram-бот для покупателей, админ-панель для управления товарами, публикация в Telegram-канал, импорт постов из канала, скидки, статусы продаж и отдельный Telegram Mini App с каталогом, корзиной и оформлением заказа.
 
 Проект сделан так, чтобы его можно было использовать как основу для реального магазина: подключить своего бота, канал, ссылки на поддержку и отзывы, загрузить свои товары, настроить Mini App и запустить всё через Docker.
 
 > В публичном репозитории нет реальных токенов, паролей, ID админов, IP сервера, доменов и приватных ссылок. Все рабочие значения должны храниться только в локальном `.env`.
+
+## Быстрый Обзор
+
+| Блок | Что делает |
+| --- | --- |
+| Telegram-бот | Показывает каталог, категории, поддержку, отзывы и Mini App. |
+| Админ-панель | Позволяет добавлять товары, менять цены, ставить SOLD и импортировать посты. |
+| Telegram-канал | Получает красивые посты товаров с фото, premium emoji и HTML-разметкой. |
+| Mini App | Даёт покупателю мобильную витрину с поиском, корзиной, избранным и заказами. |
+| Backend API | Отдаёт товары, категории, фото и принимает заказы. |
+| PostgreSQL | Хранит пользователей, товары, фото, статусы, цены, заказы и логи. |
+
+## Ключевые Слова
+
+`telegram-bot` · `telegram-mini-app` · `aiogram` · `fastapi` · `postgresql` · `redis` · `sqlalchemy` · `alembic` · `react` · `vite` · `typescript` · `zustand` · `docker` · `caddy` · `ecommerce` · `fashion-store` · `streetwear` · `catalog` · `inventory-management`
+
+## Автор И Связь
+
+Если нужно обсудить проект, адаптацию под свой магазин или доработки, можно написать автору:
+
+[![Telegram](https://img.shields.io/badge/Telegram-@natureles-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/natureles)
+[![GitHub](https://img.shields.io/badge/GitHub-22Warm--XD-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/22Warm-XD)
+
+Для багов, идей и предложений лучше использовать GitHub Issues:
+
+[![Issues](https://img.shields.io/badge/GitHub-Issues-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/22Warm-XD/telegram-store-manager/issues)
 
 ## Что Внутри
 
