@@ -9,12 +9,15 @@ from app.constants import (
     ADMIN_MENU_ADD,
     ADMIN_MENU_IMPORT,
     ADMIN_MENU_SOLD,
+    ADMIN_MENU_DESIGN,
     BUTTON_BACK_TO_PREVIEW,
     BUTTON_CANCEL,
     BUTTON_DELETE_FROM_LIST,
     BUTTON_DISCOUNT,
     BUTTON_DONE,
     BUTTON_EDIT,
+    BUTTON_EDIT_PRODUCT,
+    BUTTON_DELETE_PRODUCT,
     BUTTON_MARK_SOLD,
     BUTTON_PUBLISH,
     BUTTON_SAVE_BOT_ONLY,
@@ -97,6 +100,13 @@ def admin_menu_keyboard() -> InlineKeyboardMarkup:
         callback_data="admin:sold",
         style=STYLE_PRIMARY,
         icon_custom_emoji_id=emoji.CROSS_ID,
+    )
+    add_inline_button(
+        builder,
+        text=ADMIN_MENU_DESIGN,
+        callback_data="admin:design",
+        style=STYLE_PRIMARY,
+        icon_custom_emoji_id=emoji.MEDIA_ID,
     )
     add_inline_button(builder, text=MAIN_MENU_BACK, callback_data="main:home", icon_custom_emoji_id=emoji.REFRESH_ID)
     builder.adjust(1)
@@ -278,6 +288,18 @@ def active_product_actions_keyboard(*, product_id: int, page: int, has_discount:
     builder = InlineKeyboardBuilder()
     add_inline_button(
         builder,
+        text=BUTTON_EDIT_PRODUCT,
+        style=STYLE_PRIMARY,
+        icon_custom_emoji_id=emoji.REFRESH_ID,
+        callback_data=AdminProductActionCallback(
+            action="edit",
+            product_id=product_id,
+            page=page,
+            status=ProductStatus.ACTIVE.value,
+        ),
+    )
+    add_inline_button(
+        builder,
         text=BUTTON_DISCOUNT,
         style=STYLE_SUCCESS,
         icon_custom_emoji_id=emoji.FIRE_ID,
@@ -315,9 +337,84 @@ def active_product_actions_keyboard(*, product_id: int, page: int, has_discount:
     )
     add_inline_button(
         builder,
+        text=BUTTON_DELETE_PRODUCT,
+        style=STYLE_DANGER,
+        icon_custom_emoji_id=emoji.CROSS_ID,
+        callback_data=AdminProductActionCallback(
+            action="delete",
+            product_id=product_id,
+            page=page,
+            status=ProductStatus.ACTIVE.value,
+        ),
+    )
+    add_inline_button(
+        builder,
         text="Назад",
         icon_custom_emoji_id=emoji.REFRESH_ID,
         callback_data=AdminProductsPageCallback(status=ProductStatus.ACTIVE.value, page=page),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def existing_product_preview_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    add_inline_button(
+        builder,
+        text="Сохранить изменения",
+        callback_data=AdminPreviewActionCallback(action="save_bot_only"),
+        style=STYLE_SUCCESS,
+        icon_custom_emoji_id=emoji.CHECK_ID,
+    )
+    add_inline_button(
+        builder,
+        text=BUTTON_EDIT,
+        callback_data=AdminPreviewActionCallback(action="edit"),
+        style=STYLE_PRIMARY,
+        icon_custom_emoji_id=emoji.REFRESH_ID,
+    )
+    add_inline_button(
+        builder,
+        text=BUTTON_CANCEL,
+        callback_data=AdminPreviewActionCallback(action="cancel"),
+        style=STYLE_DANGER,
+        icon_custom_emoji_id=emoji.CROSS_ID,
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def store_design_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    add_inline_button(builder, text="Изменить цвет фона", callback_data="admin:design:color", style=STYLE_PRIMARY)
+    add_inline_button(builder, text="Изменить аватар", callback_data="admin:design:avatar", style=STYLE_PRIMARY)
+    add_inline_button(builder, text="Изменить обложку", callback_data="admin:design:cover", style=STYLE_PRIMARY)
+    add_inline_button(builder, text="Назад", callback_data="admin:menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def delete_product_confirmation_keyboard(*, product_id: int, page: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    add_inline_button(
+        builder,
+        text="Да, удалить",
+        style=STYLE_DANGER,
+        callback_data=AdminProductActionCallback(
+            action="delete_confirm",
+            product_id=product_id,
+            page=page,
+            status=ProductStatus.ACTIVE.value,
+        ),
+    )
+    add_inline_button(
+        builder,
+        text="Отмена",
+        callback_data=AdminProductViewCallback(
+            status=ProductStatus.ACTIVE.value,
+            product_id=product_id,
+            page=page,
+        ),
     )
     builder.adjust(1)
     return builder.as_markup()

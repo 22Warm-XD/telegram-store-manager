@@ -20,6 +20,8 @@ from app.keyboards.admin import (
 from app.services import formatter
 from app.services.exceptions import ChannelOperationError, InvalidPriceError
 from app.services.product_service import ProductDraft, ProductService
+from app.services.product_service import ProductUpdate
+from app.utils.pricing import parse_price
 from app.states.product_states import ProductStates
 
 router = Router(name="admin_add_product")
@@ -173,13 +175,12 @@ async def price_handler(
         await message.answer(formatter.format_invalid_price_message(), parse_mode="HTML")
         return
 
-    text = message.text.strip()
-    if not text.isdigit():
+    price = parse_price(message.text)
+    if price is None:
         await message.answer(formatter.format_invalid_price_message(), parse_mode="HTML")
         return
 
     current_state = await state.get_state()
-    price = int(text)
     await state.update_data(price=price)
 
     if current_state == ProductStates.editing_price.state:
@@ -400,11 +401,26 @@ async def publish_product_handler(
         return
 
     try:
-        await product_service.publish_product(
-            admin_id=callback.from_user.id,
-            draft=draft,
-            publish_to_channel=callback_data.action == "publish",
-        )
+        if data.get("edit_existing_id"):
+            await product_service.update_product(
+                admin_id=callback.from_user.id,
+                product_id=int(data["edit_existing_id"]),
+                update=ProductUpdate(
+                    title=draft.title,
+                    size=draft.size,
+                    condition=draft.condition,
+                    description=draft.description,
+                    category=draft.category,
+                    price=draft.price,
+                    photo_file_ids=draft.photo_file_ids,
+                ),
+            )
+        else:
+            await product_service.publish_product(
+                admin_id=callback.from_user.id,
+                draft=draft,
+                publish_to_channel=callback_data.action == "publish",
+            )
     except ChannelOperationError:
         await callback.answer()
         await callback.message.answer(formatter.format_channel_error_message(), parse_mode="HTML")

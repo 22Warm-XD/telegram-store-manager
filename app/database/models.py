@@ -149,6 +149,21 @@ class AdminActionLog(Base):
     )
 
 
+class StoreSettings(Base):
+    __tablename__ = "store_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    background_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#505559", server_default="#505559")
+    avatar_file_id: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    cover_file_id: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
 class Order(Base):
     __tablename__ = "orders"
 

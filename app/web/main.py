@@ -15,6 +15,7 @@ from app.database.models import ProductCategory
 from app.database.repositories.orders import OrderRepository
 from app.database.repositories.products import ProductRepository
 from app.database.repositories.users import UserRepository
+from app.database.repositories.store_settings import StoreSettingsRepository
 from app.database.session import create_engine
 from app.services.order_service import OrderDraftItem, OrderService, OrderValidationError, TelegramCustomer
 from app.utils.logging import configure_logging
@@ -81,13 +82,20 @@ async def healthcheck() -> dict[str, bool]:
 
 
 @app.get("/api/meta", response_model=StoreMetaResponse)
-async def get_meta(settings: Settings = Depends(get_settings)) -> StoreMetaResponse:
+async def get_meta(
+    settings: Settings = Depends(get_settings),
+    session: AsyncSession = Depends(get_session),
+) -> StoreMetaResponse:
+    store_settings = await StoreSettingsRepository(session).get()
     return StoreMetaResponse(
-        shop_name="Demo Store",
+        shop_name="Kuznetsky Store",
         support_url=settings.support_url,
         reviews_url=settings.reviews_url,
         tiktok_url=settings.tiktok_url,
         mini_app_url=settings.mini_app_url,
+        background_color=store_settings.background_color,
+        avatar_url="/api/store-media/avatar" if store_settings.avatar_file_id else "/kuznetsky-avatar.jpg",
+        cover_url="/api/store-media/cover" if store_settings.cover_file_id else None,
     )
 
 
@@ -185,9 +193,29 @@ async def get_media(
     if photo is None:
         raise HTTPException(status_code=404, detail="Фото не найдено.")
 
+    return await _telegram_file_response(photo.file_id, settings)
+
+
+@app.get("/api/store-media/{kind}")
+async def get_store_media(
+    kind: str,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    store_settings = await StoreSettingsRepository(session).get()
+    file_id = {
+        "avatar": store_settings.avatar_file_id,
+        "cover": store_settings.cover_file_id,
+    }.get(kind)
+    if not file_id:
+        raise HTTPException(status_code=404, detail="Store media not found.")
+    return await _telegram_file_response(file_id, settings)
+
+
+async def _telegram_file_response(file_id: str, settings: Settings) -> Response:
     api_url = f"https://api.telegram.org/bot{settings.bot_token}/getFile"
     async with aiohttp.ClientSession() as client:
-        async with client.get(api_url, params={"file_id": photo.file_id}) as response:
+        async with client.get(api_url, params={"file_id": file_id}) as response:
             if response.status != 200:
                 raise HTTPException(status_code=502, detail="Не удалось получить файл из Telegram.")
             payload = await response.json()

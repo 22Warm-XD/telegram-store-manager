@@ -18,6 +18,9 @@ class StoreMetaResponse(BaseModel):
     reviews_url: str
     tiktok_url: str
     mini_app_url: str | None
+    background_color: str
+    avatar_url: str | None
+    cover_url: str | None
 
 
 class ProductResponse(BaseModel):

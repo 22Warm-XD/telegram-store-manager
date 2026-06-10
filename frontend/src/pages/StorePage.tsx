@@ -5,6 +5,7 @@ import { CartDrawer } from "../components/CartDrawer";
 import { CheckoutSheet } from "../components/CheckoutSheet";
 import { FavoritesDrawer } from "../components/FavoritesDrawer";
 import { HeaderBanner } from "../components/HeaderBanner";
+import { CartIcon, ChevronIcon, SearchIcon } from "../components/Icons";
 import { ProductCard } from "../components/ProductCard";
 import { ProductModal } from "../components/ProductModal";
 import { useCartStore } from "../store/cart";
@@ -65,6 +66,14 @@ export function StorePage() {
     void loadData();
     void tryValidateTelegram();
   }, []);
+
+  useEffect(() => {
+    if (!meta?.background_color) {
+      return;
+    }
+    document.documentElement.style.setProperty("--brand-bg", meta.background_color);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", meta.background_color);
+  }, [meta]);
 
   useEffect(() => {
     if (loading) {
@@ -190,7 +199,7 @@ export function StorePage() {
 
         <section className="search-section">
           <label className="search-input">
-            <span className="search-input__icon">⌕</span>
+            <SearchIcon className="search-input__icon" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск товаров..." />
           </label>
         </section>
@@ -203,7 +212,7 @@ export function StorePage() {
 
           <div className="category-carousel">
             <button className="category-nav category-nav--prev" type="button" onClick={() => scrollCategories(-1)} aria-label="Прокрутить категории влево">
-              ‹
+              <ChevronIcon direction="left" />
             </button>
 
             <div className="category-scroller" ref={categoryScrollerRef}>
@@ -213,7 +222,7 @@ export function StorePage() {
                 onClick={() => setSelectedCategory("ALL")}
               >
                 <span>Все товары</span>
-                <small>Full Demo Store catalog</small>
+                <small>Каталог Kuznetsky Store</small>
               </button>
               {categories.map((category) => (
                 <button
@@ -229,7 +238,7 @@ export function StorePage() {
             </div>
 
             <button className="category-nav category-nav--next" type="button" onClick={() => scrollCategories(1)} aria-label="Прокрутить категории вправо">
-              ›
+              <ChevronIcon direction="right" />
             </button>
           </div>
         </section>
@@ -257,8 +266,6 @@ export function StorePage() {
               </div>
             </div>
           </div>
-
-          {webAppUser ? <div className="welcome-note">Привет, {webAppUser.first_name || webAppUser.username || "друг"}.</div> : null}
 
           {error ? <div className="form-error form-error--page">{error}</div> : null}
 
@@ -300,7 +307,7 @@ export function StorePage() {
       </div>
 
       <button className="cart-fab" type="button" onClick={() => setShowCart(true)}>
-        <span>🛒</span>
+        <CartIcon />
         {cartCount ? <strong>{cartCount}</strong> : null}
       </button>
 

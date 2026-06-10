@@ -1,5 +1,6 @@
 import type { Product } from "../types";
 import { formatPrice } from "../utils/format";
+import { HeartIcon } from "./Icons";
 
 interface ProductCardProps {
   product: Product;
@@ -42,8 +43,6 @@ export function ProductCard({
           {product.old_price ? <span className="price-old">{formatPrice(product.old_price)}</span> : null}
           <strong>{formatPrice(product.price)}</strong>
         </div>
-        <div className="product-card__meta">1 шт.</div>
-
         <div className="product-card__actions">
           <button
             className={`action-button action-button--cart ${inCart ? "action-button--active" : ""}`}
@@ -65,7 +64,7 @@ export function ProductCard({
             }}
             aria-label="Добавить в избранное"
           >
-            {isFavorite ? "♥" : "♡"}
+            <HeartIcon filled={isFavorite} />
           </button>
         </div>
       </div>

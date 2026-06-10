@@ -31,6 +31,9 @@ export interface StoreMeta {
   reviews_url: string;
   tiktok_url: string;
   mini_app_url: string | null;
+  background_color: string;
+  avatar_url: string | null;
+  cover_url: string | null;
 }
 
 export interface WebAppUser {

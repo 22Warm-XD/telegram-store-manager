@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.config import Settings
-from app.handlers.admin import active_products, add_product, admin_panel, discount, import_channel, sold
+from app.handlers.admin import active_products, add_product, admin_panel, discount, import_channel, sold, store_design
 from app.handlers.user import catalog, fallback, start, support
 from app.middlewares.session import DatabaseSessionMiddleware
 from app.middlewares.user_sync import UserSyncMiddleware
@@ -40,6 +40,7 @@ def create_dispatcher(
     dispatcher.include_router(discount.router)
     dispatcher.include_router(active_products.router)
     dispatcher.include_router(sold.router)
+    dispatcher.include_router(store_design.router)
 
     dispatcher.include_router(start.router)
     dispatcher.include_router(support.router)

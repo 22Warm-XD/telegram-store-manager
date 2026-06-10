@@ -141,22 +141,25 @@ class OrderService:
         customer_link = (
             f'<a href="tg://user?id={customer.telegram_id}">{escape(telegram_name)}</a>'
             if customer.telegram_id > 0
-            else "<b>не передан через Telegram Mini App</b>"
+            else f'<a href="https://t.me/{escape(order.contact_username.lstrip("@"))}">{escape(order.contact_username)}</a> (веб-версия)'
         )
         telegram_username_line = f"Telegram username: <b>@{escape(customer.username)}</b>\n" if customer.username else ""
         phone_line = f"Телефон: <b>{escape(order.phone)}</b>\n" if order.phone else ""
         comment_line = f"\nКомментарий: <b>{escape(order.comment)}</b>" if order.comment else ""
-        items_text = "\n".join(f"• <b>{escape(item.product_title)}</b> — {item.quantity} шт. × {item.price} ₽" for item in order.items)
+        items_text = "\n".join(
+            f"• <b>{escape(item.product_title)}</b> — {item.quantity} шт. × {item.price:,} ₽".replace(",", " ")
+            for item in order.items
+        )
         return (
             f"<b>Новый заказ #{order.id}</b>\n\n"
             f"Telegram: {customer_link}\n"
             f"{telegram_username_line}"
-            f"Telegram ID: <code>{customer.telegram_id if customer.telegram_id > 0 else 'неизвестно'}</code>\n"
+            f"Telegram ID: <code>{customer.telegram_id if customer.telegram_id > 0 else 'веб-заказ'}</code>\n"
             f"Имя: <b>{escape(order.customer_name)}</b>\n"
             f"Username для связи: <b>{escape(order.contact_username)}</b>\n"
             f"{phone_line}"
             f"Способ связи: <b>{contact_labels[order.contact_method]}</b>"
             f"{comment_line}\n\n"
             f"<b>Товары:</b>\n{items_text}\n\n"
-            f"Итого: <b>{order.total_amount} ₽</b>"
+            f"Итого: <b>{order.total_amount:,} ₽</b>".replace(",", " ")
         )

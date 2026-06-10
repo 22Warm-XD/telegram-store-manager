@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type { Product } from "../types";
 import { formatPrice } from "../utils/format";
+import { ChevronIcon, CloseIcon, HeartIcon } from "./Icons";
 
 interface ProductModalProps {
   product: Product;
@@ -26,18 +27,19 @@ export function ProductModal({
   const photos = product.photos.length ? product.photos : [""];
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true">
+    <div className="overlay overlay--product" role="dialog" aria-modal="true">
       <div className="sheet sheet--product">
-        <div className="sheet__header">
-          <button className="text-button" type="button" onClick={onClose}>
-            Назад
+        <div className="product-modal__toolbar">
+          <button className="icon-button" type="button" onClick={onClose} aria-label="Закрыть">
+            <CloseIcon />
           </button>
           <button className="icon-button" type="button" onClick={onToggleFavorite} aria-label="Избранное">
-            {isFavorite ? "♥" : "♡"}
+            <HeartIcon filled={isFavorite} />
           </button>
         </div>
-
-        <div className="product-modal__gallery">
+        <div className="product-modal__layout">
+          <div className="product-modal__media-column">
+            <div className="product-modal__gallery">
           {photos[currentIndex] ? (
             <img className="product-modal__image" src={photos[currentIndex]} alt={product.title} />
           ) : (
@@ -52,7 +54,7 @@ export function ProductModal({
                 onClick={() => setCurrentIndex((currentIndex - 1 + photos.length) % photos.length)}
                 aria-label="Предыдущее фото"
               >
-                ‹
+                <ChevronIcon direction="left" />
               </button>
               <button
                 className="carousel-button carousel-button--next"
@@ -60,17 +62,17 @@ export function ProductModal({
                 onClick={() => setCurrentIndex((currentIndex + 1) % photos.length)}
                 aria-label="Следующее фото"
               >
-                ›
+                <ChevronIcon direction="right" />
               </button>
               <div className="carousel-indicator">
                 {currentIndex + 1} / {photos.length}
               </div>
             </>
           ) : null}
-        </div>
+            </div>
 
-        {photos.length > 1 ? (
-          <div className="product-modal__thumbs">
+            {photos.length > 1 ? (
+              <div className="product-modal__thumbs">
             {photos.map((photo, index) => (
               <button
                 key={`${photo}-${index}`}
@@ -82,10 +84,11 @@ export function ProductModal({
                 <img src={photo} alt={`${product.title} ${index + 1}`} />
               </button>
             ))}
+              </div>
+            ) : null}
           </div>
-        ) : null}
 
-        <div className="product-modal__content">
+          <div className="product-modal__content">
           <div className="product-modal__status">{product.status_label}</div>
           <h2 className="product-modal__title">{product.title}</h2>
           <div className="product-modal__price">
@@ -122,6 +125,7 @@ export function ProductModal({
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

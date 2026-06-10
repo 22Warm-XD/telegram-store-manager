@@ -159,6 +159,14 @@ class ProductRepository:
         await self.session.flush()
         return product
 
+    async def replace_photos(self, product: Product, photo_file_ids: list[str]) -> None:
+        product.photos.clear()
+        product.photos.extend(
+            ProductPhoto(file_id=file_id, sort_order=index)
+            for index, file_id in enumerate(dict.fromkeys(photo_file_ids), start=1)
+        )
+        await self.session.flush()
+
     async def list_public_products(self) -> list[Product]:
         stmt = (
             select(Product)

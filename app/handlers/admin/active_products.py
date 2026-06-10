@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.config import Settings
@@ -9,16 +10,98 @@ from app.constants import ADMIN_MENU_ACTIVE
 from app.database.models import ProductStatus
 from app.handlers.admin.helpers import is_admin, send_photo_or_text
 from app.keyboards.admin import (
+    AdminProductActionCallback,
     AdminProductViewCallback,
     AdminProductsPageCallback,
     active_product_actions_keyboard,
     admin_products_keyboard,
+    delete_product_confirmation_keyboard,
+    edit_fields_keyboard,
 )
 from app.services import formatter
 from app.services.exceptions import ProductNotFoundError
 from app.services.product_service import ProductService
+from app.states.product_states import ProductStates
 
 router = Router(name="admin_active_products")
+
+
+@router.callback_query(AdminProductActionCallback.filter(F.action == "edit"))
+async def edit_active_product_handler(
+    callback: CallbackQuery,
+    callback_data: AdminProductActionCallback,
+    settings: Settings,
+    state: FSMContext,
+    product_service: ProductService,
+) -> None:
+    if callback.from_user is None or not is_admin(callback.from_user.id, settings):
+        await callback.answer(formatter.format_no_access_message(), show_alert=True)
+        return
+    try:
+        product = await product_service.get_product(callback_data.product_id)
+    except ProductNotFoundError:
+        await callback.answer(formatter.format_product_not_found_message(), show_alert=True)
+        return
+    await state.clear()
+    await state.update_data(
+        edit_existing_id=product.id,
+        edit_existing_page=callback_data.page,
+        photo_file_ids=[photo.file_id for photo in product.photos],
+        title=product.title,
+        size=product.size,
+        price=product.price,
+        condition=product.condition,
+        description=product.description or "0",
+        category=product.category.value,
+        status=product.status.value,
+    )
+    await state.set_state(ProductStates.preview)
+    await callback.answer()
+    await callback.message.answer(
+        "Что изменить в товаре?",
+        reply_markup=edit_fields_keyboard(),
+    )
+
+
+@router.callback_query(AdminProductActionCallback.filter(F.action == "delete"))
+async def ask_delete_active_product_handler(
+    callback: CallbackQuery,
+    callback_data: AdminProductActionCallback,
+    settings: Settings,
+) -> None:
+    if callback.from_user is None or not is_admin(callback.from_user.id, settings):
+        await callback.answer(formatter.format_no_access_message(), show_alert=True)
+        return
+    await callback.answer()
+    await callback.message.answer(
+        "Удалить товар из витрины? Это действие скроет его из каталога.",
+        reply_markup=delete_product_confirmation_keyboard(
+            product_id=callback_data.product_id,
+            page=callback_data.page,
+        ),
+    )
+
+
+@router.callback_query(AdminProductActionCallback.filter(F.action == "delete_confirm"))
+async def delete_active_product_handler(
+    callback: CallbackQuery,
+    callback_data: AdminProductActionCallback,
+    settings: Settings,
+    product_service: ProductService,
+) -> None:
+    if callback.from_user is None or not is_admin(callback.from_user.id, settings):
+        await callback.answer(formatter.format_no_access_message(), show_alert=True)
+        return
+    try:
+        await product_service.delete_product(
+            admin_id=callback.from_user.id,
+            product_id=callback_data.product_id,
+        )
+    except ProductNotFoundError:
+        await callback.answer(formatter.format_product_not_found_message(), show_alert=True)
+        return
+    await callback.answer("Товар удалён.")
+    await _send_active_products_page(callback, product_service=product_service, page=callback_data.page)
 
 
 @router.message(F.text == ADMIN_MENU_ACTIVE)
