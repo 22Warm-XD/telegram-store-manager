@@ -595,5 +595,5 @@ npm run build
 Проект можно адаптировать под любой Telegram-магазин.  
 Если хотите обсудить доработки, интеграцию или запуск - пишите в Telegram.
 
-[![Telegram](https://img.shields.io/badge/Telegram-@natureles-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/natureles)
+[![Telegram](https://img.shields.io/badge/Telegram-@irov16179-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/irov16179)
 [![GitHub](https://img.shields.io/badge/GitHub-22Warm--XD-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/22Warm-XD)

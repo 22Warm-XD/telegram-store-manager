@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.brand import STORE_DESCRIPTION, STORE_NAME
 from app.config import Settings, load_settings
 from app.database.models import ProductCategory
 from app.database.repositories.orders import OrderRepository
@@ -83,7 +84,8 @@ async def healthcheck() -> dict[str, bool]:
 @app.get("/api/meta", response_model=StoreMetaResponse)
 async def get_meta(settings: Settings = Depends(get_settings)) -> StoreMetaResponse:
     return StoreMetaResponse(
-        shop_name="Demo Store",
+        shop_name=STORE_NAME,
+        shop_description=STORE_DESCRIPTION,
         support_url=settings.support_url,
         reviews_url=settings.reviews_url,
         tiktok_url=settings.tiktok_url,

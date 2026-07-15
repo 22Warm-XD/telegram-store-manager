@@ -14,6 +14,7 @@ class CategoryResponse(BaseModel):
 
 class StoreMetaResponse(BaseModel):
     shop_name: str
+    shop_description: str
     support_url: str
     reviews_url: str
     tiktok_url: str

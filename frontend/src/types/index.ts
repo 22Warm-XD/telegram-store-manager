@@ -27,6 +27,7 @@ export interface Product {
 
 export interface StoreMeta {
   shop_name: string;
+  shop_description: string;
   support_url: string;
   reviews_url: string;
   tiktok_url: string;

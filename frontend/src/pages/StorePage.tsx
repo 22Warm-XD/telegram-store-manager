@@ -213,7 +213,7 @@ export function StorePage() {
                 onClick={() => setSelectedCategory("ALL")}
               >
                 <span>Все товары</span>
-                <small>Full Demo Store catalog</small>
+                  <small>Весь каталог irov store</small>
               </button>
               {categories.map((category) => (
                 <button
