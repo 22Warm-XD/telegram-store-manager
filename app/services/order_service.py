@@ -9,7 +9,7 @@ from aiogram.enums import ParseMode
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.database.models import Order, OrderContactMethod, ProductStatus
+from app.database.models import CryptoNetwork, DeliveryProvider, Order, OrderContactMethod, PaymentMethod, ProductStatus
 from app.database.repositories.orders import OrderRepository
 from app.database.repositories.products import ProductRepository
 from app.database.repositories.users import UserRepository
@@ -59,6 +59,10 @@ class OrderService:
         phone: str | None,
         comment: str | None,
         contact_method: OrderContactMethod,
+        delivery_provider: DeliveryProvider,
+        delivery_address: str,
+        payment_method: PaymentMethod,
+        crypto_network: CryptoNetwork | None,
         items: list[OrderDraftItem],
     ) -> Order:
         if not items:
@@ -73,6 +77,18 @@ class OrderService:
 
         normalized_username = self._normalize_username(username)
         normalized_phone = phone.strip() if phone and phone.strip() else None
+        normalized_address = delivery_address.strip()
+        if not normalized_address:
+            raise OrderValidationError("Delivery address is required.")
+        if payment_method == PaymentMethod.CRYPTO:
+            if crypto_network is None or not self._crypto_wallet(crypto_network):
+                raise OrderValidationError("Selected crypto network is unavailable.")
+        elif crypto_network is not None:
+            raise OrderValidationError("Crypto network is only valid for crypto payments.")
+        elif payment_method == PaymentMethod.CARD and not self.settings.payment_card_number.strip():
+            raise OrderValidationError("Card payment is unavailable.")
+        elif payment_method == PaymentMethod.PHONE_NUMBER and not self.settings.payment_phone_number.strip():
+            raise OrderValidationError("Phone payment is unavailable.")
         if contact_method in {OrderContactMethod.PHONE, OrderContactMethod.WHATSAPP} and not normalized_phone:
             raise OrderValidationError("Для выбранного способа связи нужно указать телефон.")
 
@@ -102,12 +118,23 @@ class OrderService:
             phone=normalized_phone,
             comment=comment.strip() if comment and comment.strip() else None,
             contact_method=contact_method,
+            delivery_provider=delivery_provider,
+            delivery_address=normalized_address,
+            payment_method=payment_method,
+            crypto_network=crypto_network,
             items=normalized_items,
         )
         await self.session.commit()
         await self.session.refresh(order, attribute_names=["items"])
         await self._notify_admins(order, customer=customer)
         return order
+
+    def _crypto_wallet(self, network: CryptoNetwork) -> str:
+        return {
+            CryptoNetwork.BEP20: self.settings.payment_crypto_bep20,
+            CryptoNetwork.TRC20: self.settings.payment_crypto_trc20,
+            CryptoNetwork.TON: self.settings.payment_crypto_ton,
+        }[network].strip()
 
     async def _notify_admins(self, order: Order, *, customer: TelegramCustomer) -> None:
         bot = Bot(
@@ -145,6 +172,12 @@ class OrderService:
         )
         telegram_username_line = f"Telegram username: <b>@{escape(customer.username)}</b>\n" if customer.username else ""
         phone_line = f"Телефон: <b>{escape(order.phone)}</b>\n" if order.phone else ""
+        delivery_labels = {DeliveryProvider.CDEK: "СДЭК", DeliveryProvider.OZON: "Ozon", DeliveryProvider.YANDEX: "Яндекс"}
+        payment_labels = {PaymentMethod.CARD: "Банковская карта", PaymentMethod.CRYPTO: "Криптовалюта", PaymentMethod.PHONE_NUMBER: "Перевод по номеру телефона"}
+        delivery_line = f"Доставка: <b>{delivery_labels.get(order.delivery_provider, 'не указана')}</b>\nАдрес: <b>{escape(order.delivery_address or '')}</b>\n"
+        payment_line = f"Оплата: <b>{payment_labels.get(order.payment_method, 'не указана')}</b>"
+        if order.crypto_network:
+            payment_line += f" ({escape(order.crypto_network.value)})"
         comment_line = f"\nКомментарий: <b>{escape(order.comment)}</b>" if order.comment else ""
         items_text = "\n".join(
             f"• <b>{escape(item.product_title)}</b> — {item.quantity} шт. × {item.price:,} ₽".replace(",", " ")
@@ -159,7 +192,7 @@ class OrderService:
             f"Username для связи: <b>{escape(order.contact_username)}</b>\n"
             f"{phone_line}"
             f"Способ связи: <b>{contact_labels[order.contact_method]}</b>"
-            f"{comment_line}\n\n"
+            f"\n{delivery_line}{payment_line}{comment_line}\n\n"
             f"<b>Товары:</b>\n{items_text}\n\n"
             f"Итого: <b>{order.total_amount:,} ₽</b>".replace(",", " ")
         )

@@ -87,6 +87,14 @@ export function StorePage() {
     }
   }, [loading, products, pruneCart, pruneFavorites, selectedProduct]);
 
+  useEffect(() => {
+    const productId = Number(new URLSearchParams(window.location.search).get("product"));
+    if (productId > 0) {
+      const product = products.find((item) => item.id === productId);
+      if (product) setSelectedProduct(product);
+    }
+  }, [products]);
+
   async function loadData() {
     try {
       setLoading(true);
@@ -157,6 +165,10 @@ export function StorePage() {
     username: string;
     phone: string;
     comment: string;
+    deliveryProvider: "CDEK" | "OZON" | "YANDEX";
+    deliveryAddress: string;
+    paymentMethod: "CARD" | "CRYPTO" | "PHONE_NUMBER";
+    cryptoNetwork: "BEP20" | "TRC20" | "TON" | null;
   }) {
     const initData = getInitData();
     setCheckoutLoading(true);
@@ -169,6 +181,10 @@ export function StorePage() {
         phone: payload.phone.trim() ? payload.phone.trim() : null,
         comment: payload.comment,
         contact_method: "TELEGRAM",
+        delivery_provider: payload.deliveryProvider,
+        delivery_address: payload.deliveryAddress,
+        payment_method: payload.paymentMethod,
+        crypto_network: payload.cryptoNetwork,
         items: cartItems.map((item) => ({
           product_id: item.productId,
           quantity: item.quantity,
@@ -359,6 +375,7 @@ export function StorePage() {
         <CheckoutSheet
           loading={checkoutLoading}
           error={checkoutError}
+          meta={meta}
           initialName={webAppUser?.first_name ?? ""}
           initialUsername={webAppUser?.username ? `@${webAppUser.username}` : ""}
           onClose={() => setShowCheckout(false)}

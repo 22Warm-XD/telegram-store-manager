@@ -11,7 +11,7 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings, load_settings
-from app.database.models import ProductCategory
+from app.database.models import CryptoNetwork, ProductCategory
 from app.database.repositories.orders import OrderRepository
 from app.database.repositories.products import ProductRepository
 from app.database.repositories.users import UserRepository
@@ -24,6 +24,7 @@ from app.web.schemas import (
     CategoryResponse,
     OrderCreateRequest,
     OrderCreateResponse,
+    PaymentOptionsResponse,
     ProductResponse,
     StoreMetaResponse,
     WebAppUserResponse,
@@ -96,6 +97,23 @@ async def get_meta(
         background_color=store_settings.background_color,
         avatar_url="/api/store-media/avatar" if store_settings.avatar_file_id else "/kuznetsky-avatar.jpg",
         cover_url="/api/store-media/cover" if store_settings.cover_file_id else None,
+        payment_options=PaymentOptionsResponse(
+            card_available=bool(settings.payment_card_number.strip()),
+            card_number=settings.payment_card_number.strip() or None,
+            card_holder=settings.payment_card_holder.strip() or None,
+            phone_available=bool(settings.payment_phone_number.strip()),
+            phone_number=settings.payment_phone_number.strip() or None,
+            phone_holder=settings.payment_phone_holder.strip() or None,
+            crypto_networks={
+                network: wallet
+                for network, wallet in {
+                    CryptoNetwork.BEP20: settings.payment_crypto_bep20.strip(),
+                    CryptoNetwork.TRC20: settings.payment_crypto_trc20.strip(),
+                    CryptoNetwork.TON: settings.payment_crypto_ton.strip(),
+                }.items()
+                if wallet
+            },
+        ),
     )
 
 
@@ -170,6 +188,10 @@ async def create_order(
             phone=payload.phone,
             comment=payload.comment,
             contact_method=payload.contact_method,
+            delivery_provider=payload.delivery_provider,
+            delivery_address=payload.delivery_address,
+            payment_method=payload.payment_method,
+            crypto_network=payload.crypto_network,
             items=[OrderDraftItem(product_id=item.product_id, quantity=item.quantity) for item in payload.items],
         )
     except OrderValidationError as exc:

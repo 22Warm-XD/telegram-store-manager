@@ -8,6 +8,7 @@ from app.constants import PAGE_SIZE
 from app.database.models import Product, ProductCategory, ProductSource, ProductStatus
 from app.database.repositories.products import AdminActionLogRepository, ProductRepository
 from app.services.channel_service import ChannelService
+from app.services.product_broadcast_service import ProductBroadcastService
 from app.services.exceptions import (
     ChannelOperationError,
     InvalidPriceError,
@@ -65,11 +66,13 @@ class ProductService:
         products: ProductRepository,
         admin_logs: AdminActionLogRepository,
         channel_service: ChannelService,
+        broadcast_service: ProductBroadcastService | None = None,
     ) -> None:
         self.session = session
         self.products = products
         self.admin_logs = admin_logs
         self.channel_service = channel_service
+        self.broadcast_service = broadcast_service
 
     async def record_admin_action(self, *, admin_id: int, action: str, product_id: int | None = None) -> None:
         await self.admin_logs.add_log(admin_id=admin_id, action=action, product_id=product_id)
@@ -147,6 +150,8 @@ class ProductService:
             await self.admin_logs.add_log(admin_id=admin_id, action=action, product_id=product.id)
             await self.session.commit()
             await self.session.refresh(product, attribute_names=["photos"])
+            if draft.source == ProductSource.BOT and self.broadcast_service is not None:
+                await self.broadcast_service.broadcast_new_product(product)
             return product
         except Exception as exc:
             await self.session.rollback()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Order, OrderContactMethod, OrderItem, Product
+from app.database.models import CryptoNetwork, DeliveryProvider, Order, OrderContactMethod, OrderItem, PaymentMethod, Product
 
 
 class OrderRepository:
@@ -20,6 +20,10 @@ class OrderRepository:
         phone: str | None,
         comment: str | None,
         contact_method: OrderContactMethod,
+        delivery_provider: DeliveryProvider,
+        delivery_address: str,
+        payment_method: PaymentMethod,
+        crypto_network: CryptoNetwork | None,
         items: list[tuple[Product, int]],
     ) -> Order:
         order = Order(
@@ -31,6 +35,10 @@ class OrderRepository:
             phone=phone,
             comment=comment,
             contact_method=contact_method,
+            delivery_provider=delivery_provider,
+            delivery_address=delivery_address,
+            payment_method=payment_method,
+            crypto_network=crypto_network,
             total_amount=sum(product.price * quantity for product, quantity in items),
         )
         order.items = [

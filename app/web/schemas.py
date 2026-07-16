@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.database.models import OrderContactMethod, ProductCategory, ProductStatus
+from app.database.models import CryptoNetwork, DeliveryProvider, OrderContactMethod, PaymentMethod, ProductCategory, ProductStatus
 
 
 class CategoryResponse(BaseModel):
@@ -21,6 +21,17 @@ class StoreMetaResponse(BaseModel):
     background_color: str
     avatar_url: str | None
     cover_url: str | None
+    payment_options: "PaymentOptionsResponse"
+
+
+class PaymentOptionsResponse(BaseModel):
+    card_available: bool
+    card_number: str | None = None
+    card_holder: str | None = None
+    phone_available: bool
+    phone_number: str | None = None
+    phone_holder: str | None = None
+    crypto_networks: dict[CryptoNetwork, str]
 
 
 class ProductResponse(BaseModel):
@@ -70,6 +81,10 @@ class OrderCreateRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=50)
     comment: str | None = Field(default=None, max_length=2000)
     contact_method: OrderContactMethod
+    delivery_provider: DeliveryProvider
+    delivery_address: str = Field(min_length=1, max_length=500)
+    payment_method: PaymentMethod
+    crypto_network: CryptoNetwork | None = None
     items: list[OrderItemRequest]
 
     @field_validator("items")
@@ -81,6 +96,12 @@ class OrderCreateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_contact_details(self) -> "OrderCreateRequest":
+        if not self.delivery_address.strip():
+            raise ValueError("Delivery address is required.")
+        if self.payment_method == PaymentMethod.CRYPTO and self.crypto_network is None:
+            raise ValueError("Crypto network is required.")
+        if self.payment_method != PaymentMethod.CRYPTO and self.crypto_network is not None:
+            raise ValueError("Crypto network is only valid for crypto payments.")
         if self.contact_method in {OrderContactMethod.PHONE, OrderContactMethod.WHATSAPP}:
             if not self.phone or not self.phone.strip():
                 raise ValueError("Для выбранного способа связи нужно указать телефон.")

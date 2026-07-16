@@ -361,6 +361,7 @@ async def edit_field_handler(
 @router.callback_query(AdminPreviewActionCallback.filter(F.action == "save_bot_only"))
 async def publish_product_handler(
     callback: CallbackQuery,
+    callback_data: AdminPreviewActionCallback,
     state: FSMContext,
     settings: Settings,
     product_service: ProductService,
