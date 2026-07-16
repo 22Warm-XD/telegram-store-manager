@@ -31,6 +31,8 @@ const sortOptions: Array<{ value: SortMode; label: string }> = [
 
 export function StorePage() {
   const [meta, setMeta] = useState<StoreMeta | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [metaError, setMetaError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,18 +98,31 @@ export function StorePage() {
   }, [products]);
 
   async function loadData() {
-    try {
-      setLoading(true);
-      const [metaData, categoryData, productData] = await Promise.all([fetchMeta(), fetchCategories(), fetchProducts()]);
-      setMeta(metaData);
-      setCategories(categoryData);
-      setProducts(productData);
-      setError(null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Не удалось загрузить каталог.");
-    } finally {
-      setLoading(false);
+    setLoading(true);
+    setMetaLoading(true);
+    const [metaResult, categoriesResult, productsResult] = await Promise.allSettled([
+      fetchMeta(),
+      fetchCategories(),
+      fetchProducts(),
+    ]);
+
+    if (metaResult.status === "fulfilled") {
+      setMeta(metaResult.value);
+      setMetaError(null);
+    } else {
+      setMeta(null);
+      setMetaError("Не удалось загрузить способы оплаты. Обновите Mini App");
     }
+    setMetaLoading(false);
+
+    if (categoriesResult.status === "fulfilled" && productsResult.status === "fulfilled") {
+      setCategories(categoriesResult.value);
+      setProducts(productsResult.value);
+      setError(null);
+    } else {
+      setError("Не удалось загрузить каталог.");
+    }
+    setLoading(false);
   }
 
   async function tryValidateTelegram() {
@@ -376,6 +391,8 @@ export function StorePage() {
           loading={checkoutLoading}
           error={checkoutError}
           meta={meta}
+          metaLoading={metaLoading}
+          metaError={metaError}
           initialName={webAppUser?.first_name ?? ""}
           initialUsername={webAppUser?.username ? `@${webAppUser.username}` : ""}
           onClose={() => setShowCheckout(false)}

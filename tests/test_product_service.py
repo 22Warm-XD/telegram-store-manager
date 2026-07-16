@@ -138,6 +138,23 @@ class FailingChannelService(FakeChannelService):
         raise ChannelOperationError("channel edit failed")
 
 
+class FailingBroadcastService:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def broadcast_new_product(self, product: Product) -> None:
+        self.calls += 1
+        raise RuntimeError("broadcast failed")
+
+
+class RecordingBroadcastService:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def broadcast_new_product(self, product: Product) -> None:
+        self.calls += 1
+
+
 def build_existing_product(*, status: ProductStatus = ProductStatus.ACTIVE, price: int = 21990) -> Product:
     product = Product(
         id=10,
@@ -240,6 +257,71 @@ async def test_publish_product_deduplicates_photo_file_ids() -> None:
 
     assert [photo.file_id for photo in product.photos] == ["file-1"]
     assert [photo.file_id for photo in channel.published_products[0].photos] == ["file-1"]
+
+
+@pytest.mark.asyncio
+async def test_broadcast_failure_after_commit_does_not_fail_product_publication() -> None:
+    session = FakeSession()
+    products = FakeProductsRepo()
+    logs = FakeAdminLogsRepo()
+    broadcast = FailingBroadcastService()
+    service = ProductService(
+        session=session,
+        products=products,
+        admin_logs=logs,
+        channel_service=FakeChannelService(),
+        broadcast_service=broadcast,
+    )
+
+    product = await service.publish_product(
+        admin_id=123,
+        draft=ProductDraft(
+            title="Broadcast-safe product",
+            size="M",
+            condition="New",
+            description=None,
+            category=ProductCategory.CLOTHING,
+            price=100,
+            photo_file_ids=["file-1"],
+        ),
+        publish_to_channel=False,
+    )
+
+    assert product.id == 1
+    assert session.commits == 1
+    assert session.rollbacks == 0
+    assert logs.entries == [(123, "ADD_PRODUCT_BOT_ONLY", 1)]
+    assert broadcast.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_editing_product_does_not_broadcast_again() -> None:
+    session = FakeSession()
+    product = build_existing_product()
+    broadcast = RecordingBroadcastService()
+    service = ProductService(
+        session=session,
+        products=FakeProductsRepo(product),
+        admin_logs=FakeAdminLogsRepo(),
+        channel_service=FakeChannelService(),
+        broadcast_service=broadcast,
+    )
+
+    await service.update_product(
+        admin_id=123,
+        product_id=product.id,
+        update=ProductUpdate(
+            title="Updated title",
+            size="L",
+            condition="9/10",
+            description=None,
+            category=ProductCategory.CLOTHING,
+            price=35000,
+            photo_file_ids=["new-1"],
+        ),
+    )
+
+    assert broadcast.calls == 0
 
 
 @pytest.mark.asyncio

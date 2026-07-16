@@ -23,10 +23,12 @@ async def test_broadcast_continues_after_one_delivery_failure(monkeypatch) -> No
     product = Product(id=7, title="Test", size="M", condition="New", description=None, category=ProductCategory.CLOTHING, price=100)
     product.photos = [ProductPhoto(file_id="photo", sort_order=1)]
     bot = SimpleNamespace(send_photo=AsyncMock(side_effect=[TelegramForbiddenError(method=SimpleNamespace(), message="blocked"), None]))
-    settings = SimpleNamespace(mini_app_url="https://example.test")
+    settings = SimpleNamespace(mini_app_url="https://example.test", app_version="test-version")
     service = ProductBroadcastService(bot=bot, settings=settings, users=FakeUsers())
     monkeypatch.setattr("app.services.product_broadcast_service.asyncio.sleep", AsyncMock())
 
     await service.broadcast_new_product(product)
 
     assert bot.send_photo.await_count == 2
+    markup = bot.send_photo.await_args_list[0].kwargs["reply_markup"]
+    assert markup.inline_keyboard[0][0].web_app.url == "https://example.test?v=test-version&product=7"

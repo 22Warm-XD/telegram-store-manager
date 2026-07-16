@@ -144,6 +144,9 @@ async def product_detail_handler(
             parse_mode="HTML",
             reply_markup=product_detail_keyboard(
                 support_url=settings.support_url,
+                mini_app_url=settings.mini_app_url,
+                app_version=settings.app_version,
+                product_id=product.id,
                 category=category,
                 page=callback_data.page,
             ),
@@ -155,6 +158,9 @@ async def product_detail_handler(
         parse_mode="HTML",
         reply_markup=product_detail_keyboard(
             support_url=settings.support_url,
+            mini_app_url=settings.mini_app_url,
+            app_version=settings.app_version,
+            product_id=product.id,
             category=category,
             page=callback_data.page,
         ),

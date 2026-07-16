@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     tiktok_url: str = Field(alias="TIKTOK_URL")
     logistics_url: str = Field(alias="LOGISTICS_URL")
     mini_app_url: str | None = Field(default=None, alias="MINI_APP_URL")
+    app_version: str = Field(default="dev", alias="APP_VERSION")
     caddy_site_address: str | None = Field(default=None, alias="CADDY_SITE_ADDRESS")
 
     payment_card_number: str = Field(default="", alias="PAYMENT_CARD_NUMBER")

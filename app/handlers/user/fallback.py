@@ -21,5 +21,7 @@ async def unknown_message_handler(message: Message, state: FSMContext, settings:
             is_admin=user_id in settings.admin_ids if user_id is not None else False,
             reviews_url=settings.reviews_url,
             support_url=settings.support_url,
+            mini_app_url=settings.mini_app_url,
+            app_version=settings.app_version,
         ),
     )

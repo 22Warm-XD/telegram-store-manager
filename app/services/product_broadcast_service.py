@@ -11,6 +11,7 @@ from app.config import Settings
 from app.database.models import Product
 from app.database.repositories.users import UserRepository
 from app.utils.logging import get_logger
+from app.utils.mini_app import build_mini_app_url
 
 
 class ProductBroadcastService:
@@ -21,7 +22,12 @@ class ProductBroadcastService:
         self.logger = get_logger("app.product_broadcast")
 
     async def broadcast_new_product(self, product: Product) -> None:
-        if not product.photos or not self.settings.mini_app_url:
+        order_url = build_mini_app_url(
+            self.settings.mini_app_url,
+            self.settings.app_version,
+            product_id=product.id,
+        )
+        if not product.photos or not order_url:
             return
         after_id = 0
         sent = skipped = failed = 0
@@ -36,7 +42,7 @@ class ProductBroadcastService:
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                             InlineKeyboardButton(
                                 text="Заказать",
-                                web_app=WebAppInfo(url=f"{self.settings.mini_app_url}?product={product.id}"),
+                                web_app=WebAppInfo(url=order_url),
                             )
                         ]]),
                     )
