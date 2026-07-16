@@ -1,6 +1,7 @@
 import type { Product } from "../types";
 import { formatPrice } from "../utils/format";
 import { HeartIcon } from "./Icons";
+import { mediaUrl } from "../utils/media";
 
 interface ProductCardProps {
   product: Product;
@@ -9,6 +10,7 @@ interface ProductCardProps {
   onOpen: () => void;
   onToggleFavorite: () => void;
   onAddToCart: () => void;
+  priority?: boolean;
 }
 
 export function ProductCard({
@@ -18,12 +20,13 @@ export function ProductCard({
   onOpen,
   onToggleFavorite,
   onAddToCart,
+  priority = false,
 }: ProductCardProps) {
   return (
     <article className="product-card" onClick={onOpen}>
       <div className="product-card__media">
         {product.photos[0] ? (
-          <img className="product-card__image" src={product.photos[0]} alt={product.title} loading="lazy" />
+          <img className="product-card__image" src={mediaUrl(product.photos[0], "card")} alt={product.title} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
         ) : (
           <div className="product-card__placeholder">STORE</div>
         )}

@@ -317,7 +317,7 @@ export function StorePage() {
 
           {!loading && filteredProducts.length ? (
             <div className="products-grid">
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -330,6 +330,7 @@ export function StorePage() {
                       addItem(product.id);
                     }
                   }}
+                  priority={index < 4}
                 />
               ))}
             </div>

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Product } from "../types";
 import { formatPrice } from "../utils/format";
 import { ChevronIcon, CloseIcon, HeartIcon } from "./Icons";
+import { mediaUrl } from "../utils/media";
 
 interface ProductModalProps {
   product: Product;
@@ -25,6 +26,10 @@ export function ProductModal({
 }: ProductModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const photos = product.photos.length ? product.photos : [""];
+  useEffect(() => {
+    const next = photos[(currentIndex + 1) % photos.length];
+    if (next) new Image().src = mediaUrl(next, "detail");
+  }, [currentIndex, photos]);
 
   return (
     <div className="overlay overlay--product" role="dialog" aria-modal="true">
@@ -41,7 +46,7 @@ export function ProductModal({
           <div className="product-modal__media-column">
             <div className="product-modal__gallery">
           {photos[currentIndex] ? (
-            <img className="product-modal__image" src={photos[currentIndex]} alt={product.title} />
+            <img className="product-modal__image" src={mediaUrl(photos[currentIndex], "detail")} alt={product.title} decoding="async" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
           ) : (
             <div className="product-card__placeholder product-modal__placeholder">STORE</div>
           )}
@@ -81,7 +86,7 @@ export function ProductModal({
                 onClick={() => setCurrentIndex(index)}
                 aria-label={`Фото ${index + 1}`}
               >
-                <img src={photo} alt={`${product.title} ${index + 1}`} />
+                <img src={mediaUrl(photo, "thumb")} alt={`${product.title} ${index + 1}`} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
               </button>
             ))}
               </div>

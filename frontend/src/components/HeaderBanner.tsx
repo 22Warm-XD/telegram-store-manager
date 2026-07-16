@@ -24,7 +24,7 @@ export function HeaderBanner({ meta, favoritesCount, onOpenFavorites }: HeaderBa
         </button>
       </div>
       <div className="store-profile">
-        <img className="store-profile__avatar" src={meta?.avatar_url || "/kuznetsky-avatar.jpg"} alt={shopName} />
+        <img className="store-profile__avatar" src={meta?.avatar_url || "/kuznetsky-avatar.jpg"} alt={shopName} decoding="async" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
         <div className="store-profile__content">
           <p className="store-profile__label">Оригинальные позиции</p>
           <h1>{shopName}</h1>

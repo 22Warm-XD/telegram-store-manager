@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     logistics_url: str = Field(alias="LOGISTICS_URL")
     mini_app_url: str | None = Field(default=None, alias="MINI_APP_URL")
     app_version: str = Field(default="dev", alias="APP_VERSION")
+    media_cache_dir: str = Field(default="/var/cache/store-media", alias="MEDIA_CACHE_DIR")
+    media_cache_max_mb: int = Field(default=2048, alias="MEDIA_CACHE_MAX_MB")
     caddy_site_address: str | None = Field(default=None, alias="CADDY_SITE_ADDRESS")
 
     payment_card_number: str = Field(default="", alias="PAYMENT_CARD_NUMBER")
