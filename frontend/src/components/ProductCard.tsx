@@ -1,5 +1,7 @@
 import type { Product } from "../types";
 import { formatPrice } from "../utils/format";
+import { HeartIcon } from "./Icons";
+import { mediaUrl } from "../utils/media";
 
 interface ProductCardProps {
   product: Product;
@@ -8,6 +10,7 @@ interface ProductCardProps {
   onOpen: () => void;
   onToggleFavorite: () => void;
   onAddToCart: () => void;
+  priority?: boolean;
 }
 
 export function ProductCard({
@@ -17,12 +20,13 @@ export function ProductCard({
   onOpen,
   onToggleFavorite,
   onAddToCart,
+  priority = false,
 }: ProductCardProps) {
   return (
     <article className="product-card" onClick={onOpen}>
       <div className="product-card__media">
         {product.photos[0] ? (
-          <img className="product-card__image" src={product.photos[0]} alt={product.title} loading="lazy" />
+          <img className="product-card__image" src={mediaUrl(product.photos[0], "card")} alt={product.title} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
         ) : (
           <div className="product-card__placeholder">STORE</div>
         )}
@@ -42,8 +46,6 @@ export function ProductCard({
           {product.old_price ? <span className="price-old">{formatPrice(product.old_price)}</span> : null}
           <strong>{formatPrice(product.price)}</strong>
         </div>
-        <div className="product-card__meta">1 шт.</div>
-
         <div className="product-card__actions">
           <button
             className={`action-button action-button--cart ${inCart ? "action-button--active" : ""}`}
@@ -65,7 +67,7 @@ export function ProductCard({
             }}
             aria-label="Добавить в избранное"
           >
-            {isFavorite ? "♥" : "♡"}
+            <HeartIcon filled={isFavorite} />
           </button>
         </div>
       </div>

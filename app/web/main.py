@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import mimetypes
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -11,18 +10,21 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings, load_settings
-from app.database.models import ProductCategory
+from app.database.models import CryptoNetwork, ProductCategory
 from app.database.repositories.orders import OrderRepository
 from app.database.repositories.products import ProductRepository
 from app.database.repositories.users import UserRepository
+from app.database.repositories.store_settings import StoreSettingsRepository
 from app.database.session import create_engine
 from app.services.order_service import OrderDraftItem, OrderService, OrderValidationError, TelegramCustomer
+from app.services.media_optimizer import MediaOptimizer, MediaUnavailableError, MediaVariant
 from app.utils.logging import configure_logging
 from app.web.auth import WebAppAuthError, validate_init_data
 from app.web.schemas import (
     CategoryResponse,
     OrderCreateRequest,
     OrderCreateResponse,
+    PaymentOptionsResponse,
     ProductResponse,
     StoreMetaResponse,
     WebAppUserResponse,
@@ -38,10 +40,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(settings.log_level)
     engine = create_engine(settings)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    client = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20, connect=5, sock_read=15))
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = session_factory
+    app.state.media_optimizer = MediaOptimizer(settings=settings, client=client)
     yield
+    await client.close()
     await engine.dispose()
 
 
@@ -68,6 +73,10 @@ def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
     return request.app.state.session_factory
 
 
+def get_media_optimizer(request: Request) -> MediaOptimizer:
+    return request.app.state.media_optimizer
+
+
 async def get_session(
     session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
 ) -> AsyncIterator[AsyncSession]:
@@ -81,13 +90,37 @@ async def healthcheck() -> dict[str, bool]:
 
 
 @app.get("/api/meta", response_model=StoreMetaResponse)
-async def get_meta(settings: Settings = Depends(get_settings)) -> StoreMetaResponse:
+async def get_meta(
+    settings: Settings = Depends(get_settings),
+    session: AsyncSession = Depends(get_session),
+) -> StoreMetaResponse:
+    store_settings = await StoreSettingsRepository(session).get()
     return StoreMetaResponse(
-        shop_name="Demo Store",
+        shop_name="Kuznetsky Store",
         support_url=settings.support_url,
         reviews_url=settings.reviews_url,
         tiktok_url=settings.tiktok_url,
         mini_app_url=settings.mini_app_url,
+        background_color=store_settings.background_color,
+        avatar_url=f"/api/store-media/avatar?v={int(store_settings.updated_at.timestamp())}" if store_settings.avatar_file_id else "/kuznetsky-avatar.jpg",
+        cover_url=f"/api/store-media/cover?v={int(store_settings.updated_at.timestamp())}" if store_settings.cover_file_id else None,
+        payment_options=PaymentOptionsResponse(
+            card_available=bool(settings.payment_card_number.strip()),
+            card_number=settings.payment_card_number.strip() or None,
+            card_holder=settings.payment_card_holder.strip() or None,
+            phone_available=bool(settings.payment_phone_number.strip()),
+            phone_number=settings.payment_phone_number.strip() or None,
+            phone_holder=settings.payment_phone_holder.strip() or None,
+            crypto_networks={
+                network: wallet
+                for network, wallet in {
+                    CryptoNetwork.BEP20: settings.payment_crypto_bep20.strip(),
+                    CryptoNetwork.TRC20: settings.payment_crypto_trc20.strip(),
+                    CryptoNetwork.TON: settings.payment_crypto_ton.strip(),
+                }.items()
+                if wallet
+            },
+        ),
     )
 
 
@@ -162,6 +195,10 @@ async def create_order(
             phone=payload.phone,
             comment=payload.comment,
             contact_method=payload.contact_method,
+            delivery_provider=payload.delivery_provider,
+            delivery_address=payload.delivery_address,
+            payment_method=payload.payment_method,
+            crypto_network=payload.crypto_network,
             items=[OrderDraftItem(product_id=item.product_id, quantity=item.quantity) for item in payload.items],
         )
     except OrderValidationError as exc:
@@ -178,28 +215,48 @@ async def create_order(
 @app.get("/api/media/{photo_id}")
 async def get_media(
     photo_id: int,
+    variant: MediaVariant = MediaVariant.DETAIL,
+    request: Request = None,
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    optimizer: MediaOptimizer = Depends(get_media_optimizer),
 ) -> Response:
     photo = await ProductRepository(session).get_photo_by_id(photo_id)
     if photo is None:
         raise HTTPException(status_code=404, detail="Фото не найдено.")
 
-    api_url = f"https://api.telegram.org/bot{settings.bot_token}/getFile"
-    async with aiohttp.ClientSession() as client:
-        async with client.get(api_url, params={"file_id": photo.file_id}) as response:
-            if response.status != 200:
-                raise HTTPException(status_code=502, detail="Не удалось получить файл из Telegram.")
-            payload = await response.json()
-            result = payload.get("result") or {}
-            file_path = result.get("file_path")
-            if not file_path:
-                raise HTTPException(status_code=404, detail="Telegram не вернул путь к файлу.")
+    try:
+        return await _media_response(await optimizer.get_product(photo.file_id, photo.id, variant), request)
+    except MediaUnavailableError as exc:
+        raise HTTPException(status_code=502, detail="Не удалось получить изображение.") from exc
 
-        file_url = f"https://api.telegram.org/file/bot{settings.bot_token}/{file_path}"
-        async with client.get(file_url) as file_response:
-            if file_response.status != 200:
-                raise HTTPException(status_code=502, detail="Не удалось скачать файл из Telegram.")
-            media_type = file_response.headers.get("Content-Type") or mimetypes.guess_type(file_path)[0] or "image/jpeg"
-            content = await file_response.read()
-            return Response(content=content, media_type=media_type)
+
+@app.get("/api/store-media/{kind}")
+async def get_store_media(
+    kind: str,
+    request: Request = None,
+    session: AsyncSession = Depends(get_session),
+    optimizer: MediaOptimizer = Depends(get_media_optimizer),
+) -> Response:
+    store_settings = await StoreSettingsRepository(session).get()
+    file_id = {
+        "avatar": store_settings.avatar_file_id,
+        "cover": store_settings.cover_file_id,
+    }.get(kind)
+    if not file_id:
+        raise HTTPException(status_code=404, detail="Store media not found.")
+    if kind not in {"avatar", "cover"}:
+        raise HTTPException(status_code=404, detail="Store media not found.")
+    try:
+        return await _media_response(await optimizer.get_store(file_id, kind, str(int(store_settings.updated_at.timestamp()))), request)
+    except MediaUnavailableError as exc:
+        raise HTTPException(status_code=502, detail="Не удалось получить изображение.") from exc
+
+
+async def _media_response(asset, request: Request | None = None) -> Response:
+    if request is not None and request.headers.get("if-none-match") == f'"{asset.etag}"':
+        return Response(status_code=304, headers={"ETag": f'"{asset.etag}"'})
+    return Response(
+        content=asset.content,
+        media_type=asset.media_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable", "ETag": f'"{asset.etag}"', "Content-Length": str(len(asset.content))},
+    )

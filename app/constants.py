@@ -13,6 +13,7 @@ ADMIN_MENU_ADD = "Добавить новый товар"
 ADMIN_MENU_IMPORT = "Импорт из канала"
 ADMIN_MENU_ACTIVE = "Активные объявления"
 ADMIN_MENU_SOLD = "Проданные товары"
+ADMIN_MENU_DESIGN = "Оформление магазина"
 
 BUTTON_WRITE_ADMIN = "Написать админу"
 BUTTON_DONE = "Готово"
@@ -25,6 +26,8 @@ BUTTON_REMOVE_DISCOUNT = "Удалить скидку"
 BUTTON_MARK_SOLD = "Товар продан"
 BUTTON_DELETE_FROM_LIST = "Удалить из списка"
 BUTTON_BACK_TO_PREVIEW = "Назад к предпросмотру"
+BUTTON_EDIT_PRODUCT = "Изменить товар"
+BUTTON_DELETE_PRODUCT = "Удалить товар"
 
 PAGE_SIZE = 10
 

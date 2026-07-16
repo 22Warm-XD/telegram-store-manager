@@ -83,6 +83,12 @@ class ChannelService:
             chat_id=product.channel_chat_id,
             caption=formatter.format_sold_post(product, self.settings.support_username),
         )
+
+    async def replace_product_post(self, product: Product) -> ChannelPublishResult:
+        return await self._replace_product_post(
+            product,
+            caption=formatter.format_channel_post(product, self.settings.support_username),
+        )
         return ChannelPublishResult(
             channel_message_id=product.channel_message_id,
             media_group_message_ids=product.channel_media_group_message_ids,

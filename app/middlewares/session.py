@@ -9,9 +9,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.config import Settings
 from app.database.repositories.products import AdminActionLogRepository, ProductRepository
+from app.database.repositories.store_settings import StoreSettingsRepository
 from app.database.repositories.users import UserRepository
 from app.services.channel_service import ChannelService
 from app.services.product_service import ProductService
+from app.services.product_broadcast_service import ProductBroadcastService
+from app.services.store_settings_service import StoreSettingsService
 
 
 class DatabaseSessionMiddleware(BaseMiddleware):
@@ -34,13 +37,16 @@ class DatabaseSessionMiddleware(BaseMiddleware):
             products_repo = ProductRepository(session)
             users_repo = UserRepository(session)
             admin_logs_repo = AdminActionLogRepository(session)
+            store_settings_repo = StoreSettingsRepository(session)
             channel_service = ChannelService(bot=data["bot"], settings=self.settings)
             product_service = ProductService(
                 session=session,
                 products=products_repo,
                 admin_logs=admin_logs_repo,
                 channel_service=channel_service,
+                broadcast_service=ProductBroadcastService(bot=data["bot"], settings=self.settings, users=users_repo),
             )
+            store_settings_service = StoreSettingsService(session=session, repository=store_settings_repo)
 
             data.update(
                 {
@@ -50,6 +56,7 @@ class DatabaseSessionMiddleware(BaseMiddleware):
                     "admin_logs_repo": admin_logs_repo,
                     "channel_service": channel_service,
                     "product_service": product_service,
+                    "store_settings_service": store_settings_service,
                     "settings": self.settings,
                 }
             )

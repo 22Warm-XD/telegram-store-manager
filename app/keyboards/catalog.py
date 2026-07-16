@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.constants import BUTTON_WRITE_ADMIN, MAIN_MENU_BACK
 from app.database.models import Product, ProductCategory
 from app.keyboards.styles import STYLE_PRIMARY, add_inline_button
+from app.utils.mini_app import build_mini_app_url
 from app.utils import premium_emoji as emoji
 
 SHOES_BUTTON_EMOJI_ID = "5355227496830743755"
@@ -106,10 +107,16 @@ def catalog_products_keyboard(
 def product_detail_keyboard(
     *,
     support_url: str,
+    mini_app_url: str | None,
+    app_version: str,
+    product_id: int,
     category: ProductCategory,
     page: int,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    order_url = build_mini_app_url(mini_app_url, app_version, product_id=product_id)
+    if order_url:
+        add_inline_button(builder, text="Заказать", web_app=WebAppInfo(url=order_url), style=STYLE_PRIMARY)
     add_inline_button(builder, text=BUTTON_WRITE_ADMIN, url=support_url, style=STYLE_PRIMARY, icon_custom_emoji_id=emoji.USER_ID)
     add_inline_button(
         builder,

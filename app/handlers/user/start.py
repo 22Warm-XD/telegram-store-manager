@@ -37,6 +37,7 @@ async def start_handler(message: Message, state: FSMContext, settings: Settings)
             reviews_url=settings.reviews_url,
             support_url=settings.support_url,
             mini_app_url=settings.mini_app_url,
+            app_version=settings.app_version,
         ),
     )
     await state.update_data(**{MAIN_MESSAGE_ID_KEY: sent_message.message_id})
@@ -55,6 +56,7 @@ async def main_home_handler(callback: CallbackQuery, state: FSMContext, settings
             reviews_url=settings.reviews_url,
             support_url=settings.support_url,
             mini_app_url=settings.mini_app_url,
+            app_version=settings.app_version,
         ),
     )
     await state.update_data(**{MAIN_MESSAGE_ID_KEY: callback.message.message_id})
@@ -74,6 +76,7 @@ async def back_to_main_menu_handler(message: Message, state: FSMContext, setting
             reviews_url=settings.reviews_url,
             support_url=settings.support_url,
             mini_app_url=settings.mini_app_url,
+            app_version=settings.app_version,
         ),
     )
     await state.update_data(**{MAIN_MESSAGE_ID_KEY: sent_message.message_id})

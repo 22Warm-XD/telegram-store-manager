@@ -107,11 +107,10 @@ def format_start_message(name: str, tiktok_url: str) -> str:
     safe_name = escape(name or "друг")
     return (
         f"Привет, {safe_name} 👋\n\n"
-        f"Вас приветствует чат-бот магазина Demo Store {emoji.SHOP}\n\n"
-        f"{emoji.WARNING} В наличии одежда, обувь и аксессуары\n"
-        f"{emoji.WARNING} Выкуп с Китая, Японии, Кореи, США и Европы\n"
-        f"{emoji.WARNING} Отправка по всей России и СНГ\n"
-        "📍 Мы находимся в г. Стерлитамак\n\n"
+        f"Вас приветствует чат-бот магазина Kuznetsky Store {emoji.SHOP}\n\n"
+        f"{emoji.WARNING} Строго оригинальные позиции\n"
+        f"{emoji.WARNING} Личная встреча в г. Стерлитамак\n"
+        f"{emoji.WARNING} Отправка в разные регионы: Авито, СДЭК, Яндекс, Почта России\n\n"
         "Чтобы оформить заказ, перейдите в «Каталог», выберите товар и напишите менеджеру.\n\n"
         "🔗 Наши соцсети:\n"
         f'<a href="{escape(tiktok_url, quote=True)}">ТИК ТОК</a>\n\n'
@@ -133,7 +132,7 @@ def format_no_access_message() -> str:
 
 def format_admin_menu_message() -> str:
     return (
-        f"{emoji.SHOP} <b>Demo Store Admin</b>\n\n"
+        f"{emoji.SHOP} <b>Kuznetsky Store Admin</b>\n\n"
         "Управляйте объявлениями, скидками и статусами товаров."
     )
 
@@ -408,11 +407,11 @@ def format_cancelled_message() -> str:
 
 
 def format_reviews_message() -> str:
-    return f"{emoji.SHIELD} Отзывы Demo Store\n\nОткройте отзывы по кнопке ниже."
+    return f"{emoji.SHIELD} Отзывы Kuznetsky Store\n\nОткройте отзывы по кнопке ниже."
 
 
 def format_support_link_message() -> str:
-    return f"{emoji.USER} Поддержка Demo Store\n\nНапишите менеджеру по кнопке ниже."
+    return f"{emoji.USER} Поддержка Kuznetsky Store\n\nНапишите менеджеру по кнопке ниже."
 
 
 def format_catalog_message() -> str:

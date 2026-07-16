@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import User
@@ -35,3 +36,7 @@ class UserRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one()
+
+    async def list_telegram_ids(self, *, after_id: int = 0, limit: int = 100) -> list[tuple[int, int]]:
+        stmt = select(User.id, User.telegram_id).where(User.id > after_id).order_by(User.id).limit(limit)
+        return [(int(row.id), int(row.telegram_id)) for row in (await self.session.execute(stmt)).all()]

@@ -50,6 +50,24 @@ class OrderContactMethod(str, enum.Enum):
     WHATSAPP = "WHATSAPP"
 
 
+class DeliveryProvider(str, enum.Enum):
+    CDEK = "CDEK"
+    OZON = "OZON"
+    YANDEX = "YANDEX"
+
+
+class PaymentMethod(str, enum.Enum):
+    CARD = "CARD"
+    CRYPTO = "CRYPTO"
+    PHONE_NUMBER = "PHONE_NUMBER"
+
+
+class CryptoNetwork(str, enum.Enum):
+    BEP20 = "BEP20"
+    TRC20 = "TRC20"
+    TON = "TON"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -149,6 +167,21 @@ class AdminActionLog(Base):
     )
 
 
+class StoreSettings(Base):
+    __tablename__ = "store_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    background_color: Mapped[str] = mapped_column(String(7), nullable=False, default="#505559", server_default="#505559")
+    avatar_file_id: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    cover_file_id: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -163,6 +196,16 @@ class Order(Base):
     contact_method: Mapped[OrderContactMethod] = mapped_column(
         Enum(OrderContactMethod, name="order_contact_method"),
         nullable=False,
+    )
+    delivery_provider: Mapped[DeliveryProvider | None] = mapped_column(
+        Enum(DeliveryProvider, name="delivery_provider"), nullable=True
+    )
+    delivery_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    payment_method: Mapped[PaymentMethod | None] = mapped_column(
+        Enum(PaymentMethod, name="payment_method"), nullable=True
+    )
+    crypto_network: Mapped[CryptoNetwork | None] = mapped_column(
+        Enum(CryptoNetwork, name="crypto_network"), nullable=True
     )
     total_amount: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

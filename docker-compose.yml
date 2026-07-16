@@ -37,6 +37,8 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - media_cache:/var/cache/store-media
 
   web:
     build:
@@ -83,3 +85,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  media_cache:

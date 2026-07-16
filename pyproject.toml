@@ -19,6 +19,7 @@ dependencies = [
     "python-dotenv>=1.0,<2.0",
     "fastapi>=0.115,<1.0",
     "uvicorn>=0.34,<1.0",
+    "Pillow>=11,<13",
 ]
 
 [project.optional-dependencies]

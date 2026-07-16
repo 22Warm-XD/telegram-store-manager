@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 
 from app.config import Settings
 from app.database.models import Product, ProductCategory, ProductPhoto, ProductStatus
-from app.keyboards.admin import preview_actions_keyboard
+from app.keyboards.admin import existing_product_preview_keyboard, preview_actions_keyboard
 from app.services import formatter
 
 
@@ -45,7 +45,7 @@ async def send_preview(target: Message | CallbackQuery, state: FSMContext, setti
         target,
         text=text,
         photo_file_ids=photo_file_ids,
-        reply_markup=preview_actions_keyboard(),
+        reply_markup=existing_product_preview_keyboard() if data.get("edit_existing_id") else preview_actions_keyboard(),
     )
 
 

@@ -11,6 +11,7 @@ from app.services import formatter
 from app.services.exceptions import ChannelOperationError, InvalidPriceError, ProductAlreadySoldError, ProductNotFoundError
 from app.services.product_service import ProductService
 from app.states.product_states import ProductStates
+from app.utils.pricing import parse_price
 
 router = Router(name="admin_discount")
 
@@ -51,8 +52,8 @@ async def apply_discount_handler(
         await message.answer(formatter.format_invalid_price_message(), parse_mode="HTML")
         return
 
-    text = message.text.strip()
-    if not text.isdigit():
+    new_price = parse_price(message.text)
+    if new_price is None:
         await message.answer(formatter.format_invalid_price_message(), parse_mode="HTML")
         return
 
@@ -64,7 +65,6 @@ async def apply_discount_handler(
 
     product_id = int(data["discount_product_id"])
     page = int(data["discount_page"])
-    new_price = int(text)
     try:
         product = await product_service.apply_discount(
             admin_id=message.from_user.id,

@@ -5,6 +5,7 @@ import { CartDrawer } from "../components/CartDrawer";
 import { CheckoutSheet } from "../components/CheckoutSheet";
 import { FavoritesDrawer } from "../components/FavoritesDrawer";
 import { HeaderBanner } from "../components/HeaderBanner";
+import { CartIcon, ChevronIcon, SearchIcon } from "../components/Icons";
 import { ProductCard } from "../components/ProductCard";
 import { ProductModal } from "../components/ProductModal";
 import { useCartStore } from "../store/cart";
@@ -30,6 +31,8 @@ const sortOptions: Array<{ value: SortMode; label: string }> = [
 
 export function StorePage() {
   const [meta, setMeta] = useState<StoreMeta | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [metaError, setMetaError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +70,14 @@ export function StorePage() {
   }, []);
 
   useEffect(() => {
+    if (!meta?.background_color) {
+      return;
+    }
+    document.documentElement.style.setProperty("--brand-bg", meta.background_color);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", meta.background_color);
+  }, [meta]);
+
+  useEffect(() => {
     if (loading) {
       return;
     }
@@ -78,19 +89,40 @@ export function StorePage() {
     }
   }, [loading, products, pruneCart, pruneFavorites, selectedProduct]);
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      const [metaData, categoryData, productData] = await Promise.all([fetchMeta(), fetchCategories(), fetchProducts()]);
-      setMeta(metaData);
-      setCategories(categoryData);
-      setProducts(productData);
-      setError(null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Не удалось загрузить каталог.");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const productId = Number(new URLSearchParams(window.location.search).get("product"));
+    if (productId > 0) {
+      const product = products.find((item) => item.id === productId);
+      if (product) setSelectedProduct(product);
     }
+  }, [products]);
+
+  async function loadData() {
+    setLoading(true);
+    setMetaLoading(true);
+    const [metaResult, categoriesResult, productsResult] = await Promise.allSettled([
+      fetchMeta(),
+      fetchCategories(),
+      fetchProducts(),
+    ]);
+
+    if (metaResult.status === "fulfilled") {
+      setMeta(metaResult.value);
+      setMetaError(null);
+    } else {
+      setMeta(null);
+      setMetaError("Не удалось загрузить способы оплаты. Обновите Mini App");
+    }
+    setMetaLoading(false);
+
+    if (categoriesResult.status === "fulfilled" && productsResult.status === "fulfilled") {
+      setCategories(categoriesResult.value);
+      setProducts(productsResult.value);
+      setError(null);
+    } else {
+      setError("Не удалось загрузить каталог.");
+    }
+    setLoading(false);
   }
 
   async function tryValidateTelegram() {
@@ -148,6 +180,10 @@ export function StorePage() {
     username: string;
     phone: string;
     comment: string;
+    deliveryProvider: "CDEK" | "OZON" | "YANDEX";
+    deliveryAddress: string;
+    paymentMethod: "CARD" | "CRYPTO" | "PHONE_NUMBER";
+    cryptoNetwork: "BEP20" | "TRC20" | "TON" | null;
   }) {
     const initData = getInitData();
     setCheckoutLoading(true);
@@ -160,6 +196,10 @@ export function StorePage() {
         phone: payload.phone.trim() ? payload.phone.trim() : null,
         comment: payload.comment,
         contact_method: "TELEGRAM",
+        delivery_provider: payload.deliveryProvider,
+        delivery_address: payload.deliveryAddress,
+        payment_method: payload.paymentMethod,
+        crypto_network: payload.cryptoNetwork,
         items: cartItems.map((item) => ({
           product_id: item.productId,
           quantity: item.quantity,
@@ -190,7 +230,7 @@ export function StorePage() {
 
         <section className="search-section">
           <label className="search-input">
-            <span className="search-input__icon">⌕</span>
+            <SearchIcon className="search-input__icon" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск товаров..." />
           </label>
         </section>
@@ -203,7 +243,7 @@ export function StorePage() {
 
           <div className="category-carousel">
             <button className="category-nav category-nav--prev" type="button" onClick={() => scrollCategories(-1)} aria-label="Прокрутить категории влево">
-              ‹
+              <ChevronIcon direction="left" />
             </button>
 
             <div className="category-scroller" ref={categoryScrollerRef}>
@@ -213,7 +253,7 @@ export function StorePage() {
                 onClick={() => setSelectedCategory("ALL")}
               >
                 <span>Все товары</span>
-                <small>Full Demo Store catalog</small>
+                <small>Каталог Kuznetsky Store</small>
               </button>
               {categories.map((category) => (
                 <button
@@ -229,7 +269,7 @@ export function StorePage() {
             </div>
 
             <button className="category-nav category-nav--next" type="button" onClick={() => scrollCategories(1)} aria-label="Прокрутить категории вправо">
-              ›
+              <ChevronIcon direction="right" />
             </button>
           </div>
         </section>
@@ -258,8 +298,6 @@ export function StorePage() {
             </div>
           </div>
 
-          {webAppUser ? <div className="welcome-note">Привет, {webAppUser.first_name || webAppUser.username || "друг"}.</div> : null}
-
           {error ? <div className="form-error form-error--page">{error}</div> : null}
 
           {loading ? (
@@ -279,7 +317,7 @@ export function StorePage() {
 
           {!loading && filteredProducts.length ? (
             <div className="products-grid">
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -292,6 +330,7 @@ export function StorePage() {
                       addItem(product.id);
                     }
                   }}
+                  priority={index < 4}
                 />
               ))}
             </div>
@@ -300,7 +339,7 @@ export function StorePage() {
       </div>
 
       <button className="cart-fab" type="button" onClick={() => setShowCart(true)}>
-        <span>🛒</span>
+        <CartIcon />
         {cartCount ? <strong>{cartCount}</strong> : null}
       </button>
 
@@ -352,6 +391,9 @@ export function StorePage() {
         <CheckoutSheet
           loading={checkoutLoading}
           error={checkoutError}
+          meta={meta}
+          metaLoading={metaLoading}
+          metaError={metaError}
           initialName={webAppUser?.first_name ?? ""}
           initialUsername={webAppUser?.username ? `@${webAppUser.username}` : ""}
           onClose={() => setShowCheckout(false)}

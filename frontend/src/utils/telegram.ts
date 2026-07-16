@@ -4,14 +4,13 @@ export function getTelegramWebApp() {
 
 export function initializeTelegramWebApp() {
   const webApp = getTelegramWebApp();
-  if (!webApp) {
+  if (!webApp?.initData) {
     return;
   }
   webApp.ready();
   webApp.expand();
-  webApp.setHeaderColor?.("#140a1f");
-  webApp.setBackgroundColor?.("#120916");
-  webApp.disableVerticalSwipes?.();
+  webApp.setHeaderColor?.("#505559");
+  webApp.setBackgroundColor?.("#505559");
 }
 
 export function getInitData(): string {

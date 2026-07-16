@@ -8,6 +8,8 @@ from app.constants import PAGE_SIZE
 from app.database.models import Product, ProductCategory, ProductSource, ProductStatus
 from app.database.repositories.products import AdminActionLogRepository, ProductRepository
 from app.services.channel_service import ChannelService
+from app.services.product_broadcast_service import ProductBroadcastService
+from app.utils.logging import get_logger
 from app.services.exceptions import (
     ChannelOperationError,
     InvalidPriceError,
@@ -39,6 +41,17 @@ class ProductDraft:
 
 
 @dataclass(slots=True)
+class ProductUpdate:
+    title: str
+    size: str
+    condition: str
+    description: str | None
+    category: ProductCategory
+    price: int
+    photo_file_ids: list[str]
+
+
+@dataclass(slots=True)
 class PaginatedProducts:
     items: list[Product]
     page: int
@@ -54,11 +67,14 @@ class ProductService:
         products: ProductRepository,
         admin_logs: AdminActionLogRepository,
         channel_service: ChannelService,
+        broadcast_service: ProductBroadcastService | None = None,
     ) -> None:
         self.session = session
         self.products = products
         self.admin_logs = admin_logs
         self.channel_service = channel_service
+        self.broadcast_service = broadcast_service
+        self.logger = get_logger("app.product_service")
 
     async def record_admin_action(self, *, admin_id: int, action: str, product_id: int | None = None) -> None:
         await self.admin_logs.add_log(admin_id=admin_id, action=action, product_id=product_id)
@@ -136,13 +152,19 @@ class ProductService:
             await self.admin_logs.add_log(admin_id=admin_id, action=action, product_id=product.id)
             await self.session.commit()
             await self.session.refresh(product, attribute_names=["photos"])
-            return product
         except Exception as exc:
             await self.session.rollback()
             await self._record_failed_action(admin_id=admin_id, action="PUBLISH_PRODUCT_FAILED")
             if isinstance(exc, ChannelOperationError):
                 raise
             raise
+
+        if draft.source == ProductSource.BOT and self.broadcast_service is not None:
+            try:
+                await self.broadcast_service.broadcast_new_product(product)
+            except Exception:
+                self.logger.exception("product_broadcast_failed", product_id=product.id)
+        return product
 
     async def apply_discount(self, *, admin_id: int, product_id: int, new_price: int) -> Product:
         self._validate_price(new_price)
@@ -195,6 +217,53 @@ class ProductService:
             if isinstance(exc, ChannelOperationError):
                 raise
             raise
+
+    async def update_product(self, *, admin_id: int, product_id: int, update: ProductUpdate) -> Product:
+        self._validate_price(update.price)
+        photo_file_ids = self._dedupe_photo_file_ids(update.photo_file_ids)
+        if not photo_file_ids or len(photo_file_ids) > 5:
+            raise InvalidProductStateError("Product must contain from 1 to 5 photos.")
+
+        product = await self.products.get_product(product_id, for_update=True)
+        if product is None:
+            raise ProductNotFoundError
+        if product.status == ProductStatus.SOLD:
+            raise ProductAlreadySoldError
+
+        product.title = update.title.strip()
+        product.size = update.size.strip()
+        product.condition = update.condition.strip()
+        product.description = self._normalize_description(update.description)
+        product.category = update.category
+        product.price = update.price
+        product.old_price = None
+        await self.products.replace_photos(product, photo_file_ids)
+
+        try:
+            if product.channel_message_id is not None:
+                publish_result = await self.channel_service.replace_product_post(product)
+                await self.products.set_channel_post_info(
+                    product,
+                    channel_message_id=publish_result.channel_message_id,
+                    media_group_message_ids=publish_result.media_group_message_ids,
+                    channel_chat_id=publish_result.channel_chat_id,
+                )
+            await self.admin_logs.add_log(admin_id=admin_id, action="UPDATE_PRODUCT", product_id=product.id)
+            await self.session.commit()
+            await self.session.refresh(product, attribute_names=["photos"])
+            return product
+        except Exception:
+            await self.session.rollback()
+            raise
+
+    async def delete_product(self, *, admin_id: int, product_id: int) -> Product:
+        product = await self.products.get_product(product_id, for_update=True)
+        if product is None:
+            raise ProductNotFoundError
+        await self.products.archive_product(product)
+        await self.admin_logs.add_log(admin_id=admin_id, action="DELETE_PRODUCT", product_id=product.id)
+        await self.session.commit()
+        return product
 
     async def remove_discount(self, *, admin_id: int, product_id: int) -> Product:
         product = await self.products.get_product(product_id, for_update=True)

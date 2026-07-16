@@ -1,6 +1,9 @@
 export type ProductCategory = "SHOES" | "CLOTHING" | "ACCESSORIES";
 export type ProductStatus = "ACTIVE" | "SOLD";
 export type ContactMethod = "TELEGRAM" | "PHONE" | "WHATSAPP";
+export type DeliveryProvider = "CDEK" | "OZON" | "YANDEX";
+export type PaymentMethod = "CARD" | "CRYPTO" | "PHONE_NUMBER";
+export type CryptoNetwork = "BEP20" | "TRC20" | "TON";
 
 export interface Category {
   key: ProductCategory;
@@ -31,6 +34,18 @@ export interface StoreMeta {
   reviews_url: string;
   tiktok_url: string;
   mini_app_url: string | null;
+  background_color: string;
+  avatar_url: string | null;
+  cover_url: string | null;
+  payment_options: {
+    card_available: boolean;
+    card_number: string | null;
+    card_holder: string | null;
+    phone_available: boolean;
+    phone_number: string | null;
+    phone_holder: string | null;
+    crypto_networks: Partial<Record<CryptoNetwork, string>>;
+  };
 }
 
 export interface WebAppUser {
@@ -57,6 +72,10 @@ export interface OrderPayload {
   phone: string | null;
   comment: string;
   contact_method: ContactMethod;
+  delivery_provider: DeliveryProvider;
+  delivery_address: string;
+  payment_method: PaymentMethod;
+  crypto_network: CryptoNetwork | null;
   items: OrderItemPayload[];
 }
 

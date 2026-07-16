@@ -23,6 +23,7 @@ from app.services import formatter
 from app.services.exceptions import InvalidPriceError, InvalidProductStateError
 from app.services.product_service import ProductDraft, ProductService
 from app.states.product_states import ProductStates
+from app.utils.pricing import parse_price
 from app.utils import premium_emoji as emoji
 
 router = Router(name="admin_import_channel")
@@ -148,10 +149,11 @@ async def import_condition_handler(message: Message, state: FSMContext, settings
 
 @router.message(ProductStates.import_waiting_for_price)
 async def import_price_handler(message: Message, state: FSMContext, settings: Settings, product_service: ProductService) -> None:
-    if not message.text or not message.text.strip().isdigit():
+    parsed_price = parse_price(message.text or "")
+    if parsed_price is None:
         await message.answer(formatter.format_invalid_price_message(), parse_mode="HTML")
         return
-    await state.update_data(import_price=int(message.text.strip()))
+    await state.update_data(import_price=parsed_price)
     await _prepare_or_save_import(message, state, settings, product_service, admin_id=message.from_user.id if message.from_user else 0)
 
 
@@ -332,9 +334,7 @@ def _parse_import_text(text: str) -> ParsedImportPost:
             condition = _value_after_colon_or_space(line, "Состояние")
             continue
         if lower.startswith("цена"):
-            match = re.search(r"(\d[\d\s]*)", line)
-            if match:
-                price = int(match.group(1).replace(" ", ""))
+            price = parse_price(line)
             continue
         if line.startswith("#") or "админ" in lower or "в наличии" in lower or "sold" in lower:
             continue

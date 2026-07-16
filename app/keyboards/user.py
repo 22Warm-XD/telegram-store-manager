@@ -11,6 +11,7 @@ from app.constants import (
     MAIN_MENU_SUPPORT,
 )
 from app.keyboards.styles import STYLE_PRIMARY, STYLE_SUCCESS, add_inline_button, styled_keyboard_button
+from app.utils.mini_app import build_mini_app_url
 from app.utils import premium_emoji as emoji
 
 
@@ -22,15 +23,17 @@ def main_menu_keyboard(
     *,
     is_admin: bool = False,
     mini_app_url: str | None = None,
+    app_version: str = "dev",
 ) -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
-    if _can_use_web_app(mini_app_url):
+    web_app_url = build_mini_app_url(mini_app_url, app_version)
+    if _can_use_web_app(web_app_url):
         builder.row(
             styled_keyboard_button(
                 text=MAIN_MENU_STORE,
                 style=STYLE_SUCCESS,
                 icon_custom_emoji_id=emoji.SHOP_ID,
-                web_app=WebAppInfo(url=mini_app_url),
+                web_app=WebAppInfo(url=web_app_url),
             )
         )
     builder.row(
@@ -63,25 +66,18 @@ def main_menu_inline_keyboard(
     reviews_url: str,
     support_url: str,
     mini_app_url: str | None = None,
+    app_version: str = "dev",
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    if mini_app_url:
-        if _can_use_web_app(mini_app_url):
-            add_inline_button(
-                builder,
-                text=MAIN_MENU_STORE,
-                web_app=WebAppInfo(url=mini_app_url),
-                style=STYLE_SUCCESS,
-                icon_custom_emoji_id=emoji.SHOP_ID,
-            )
-        else:
-            add_inline_button(
-                builder,
-                text=MAIN_MENU_STORE,
-                url=mini_app_url,
-                style=STYLE_SUCCESS,
-                icon_custom_emoji_id=emoji.SHOP_ID,
-            )
+    web_app_url = build_mini_app_url(mini_app_url, app_version)
+    if web_app_url:
+        add_inline_button(
+            builder,
+            text=MAIN_MENU_STORE,
+            web_app=WebAppInfo(url=web_app_url),
+            style=STYLE_SUCCESS,
+            icon_custom_emoji_id=emoji.SHOP_ID,
+        )
     add_inline_button(
         builder,
         text=MAIN_MENU_CATALOG,
@@ -110,12 +106,12 @@ def main_menu_inline_keyboard(
             callback_data="main:admin",
             icon_custom_emoji_id=emoji.REFRESH_ID,
         )
-        if mini_app_url:
+        if web_app_url:
             builder.adjust(1, 1, 2, 1)
         else:
             builder.adjust(1, 2, 1)
     else:
-        if mini_app_url:
+        if web_app_url:
             builder.adjust(1, 1, 2)
         else:
             builder.adjust(1, 2)

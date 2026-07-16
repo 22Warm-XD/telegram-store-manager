@@ -24,7 +24,18 @@ class Settings(BaseSettings):
     tiktok_url: str = Field(alias="TIKTOK_URL")
     logistics_url: str = Field(alias="LOGISTICS_URL")
     mini_app_url: str | None = Field(default=None, alias="MINI_APP_URL")
+    app_version: str = Field(default="dev", alias="APP_VERSION")
+    media_cache_dir: str = Field(default="/var/cache/store-media", alias="MEDIA_CACHE_DIR")
+    media_cache_max_mb: int = Field(default=2048, alias="MEDIA_CACHE_MAX_MB")
     caddy_site_address: str | None = Field(default=None, alias="CADDY_SITE_ADDRESS")
+
+    payment_card_number: str = Field(default="", alias="PAYMENT_CARD_NUMBER")
+    payment_card_holder: str = Field(default="", alias="PAYMENT_CARD_HOLDER")
+    payment_phone_number: str = Field(default="", alias="PAYMENT_PHONE_NUMBER")
+    payment_phone_holder: str = Field(default="", alias="PAYMENT_PHONE_HOLDER")
+    payment_crypto_bep20: str = Field(default="", alias="PAYMENT_CRYPTO_BEP20")
+    payment_crypto_trc20: str = Field(default="", alias="PAYMENT_CRYPTO_TRC20")
+    payment_crypto_ton: str = Field(default="", alias="PAYMENT_CRYPTO_TON")
 
     postgres_host: str = Field(alias="POSTGRES_HOST")
     postgres_port: int = Field(alias="POSTGRES_PORT")
